@@ -40,3 +40,5 @@ coverage/
 
 # Claude Code local config (do not publish)
 .claude/
+
+INTERVIEW_PREP.md
