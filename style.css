@@ -25,6 +25,21 @@ body{font-family:'Inter',system-ui,sans-serif;background:#050510;color:#c8d6e5;m
     box-shadow:0 4px 16px rgba(124,58,237,0.4);
     animation:pulse 3s ease-in-out infinite;
 }
+.brand-mark-img{
+    width:42px;height:42px;border-radius:11px;
+    object-fit:cover;
+    /* The logo image is square with the star+text on the left half;
+       zoom in to keep the star symbol prominent at small sizes. */
+    object-position:30% center;
+    background:linear-gradient(135deg,#1a1235,#0a0820);
+    box-shadow:0 4px 18px rgba(124,58,237,0.45),0 0 0 1px rgba(168,85,247,0.25);
+    flex-shrink:0;
+    animation:logoGlow 4s ease-in-out infinite;
+}
+@keyframes logoGlow{
+    0%,100%{box-shadow:0 4px 18px rgba(124,58,237,0.45),0 0 0 1px rgba(168,85,247,0.25)}
+    50%{box-shadow:0 6px 24px rgba(124,58,237,0.65),0 0 0 1px rgba(168,85,247,0.45),0 0 16px rgba(168,85,247,0.3)}
+}
 .brand-text{display:flex;flex-direction:column;line-height:1.2}
 .brand-text h1{
     font-size:1.05rem;font-weight:800;
