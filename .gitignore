@@ -37,3 +37,6 @@ coverage/
 # Local backups
 *.bak
 *.tmp
+
+# Claude Code local config (do not publish)
+.claude/
