@@ -50,6 +50,12 @@ body{font-family:'Inter',system-ui,sans-serif;background:#050510;color:#c8d6e5;m
     color:#e2e8f0;
     box-shadow:inset 2px 0 0 #a855f7;
 }
+.nav-item.needs-keys{
+    background:rgba(239,68,68,0.08);
+    color:#f87171;
+    animation:navPulse 2s infinite;
+}
+@keyframes navPulse{0%,100%{box-shadow:inset 2px 0 0 rgba(239,68,68,0.4)}50%{box-shadow:inset 2px 0 0 rgba(239,68,68,0.9),0 0 12px rgba(239,68,68,0.15)}}
 .nav-icon{font-size:0.9rem;width:18px;text-align:center;flex-shrink:0}
 .nav-ext{margin-left:auto;color:#475569;font-size:0.7rem}
 .nav-badge{

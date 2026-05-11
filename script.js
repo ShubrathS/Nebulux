@@ -405,7 +405,12 @@ async function runPipeline() {
 
 // ===== API HEALTH CHECK =====
 const apiModal = document.getElementById('api-modal');
-const btnCheckApis = document.getElementById('btn-check-apis');
+// Header button was removed in the dashboard redesign — Check APIs is now a sidebar nav item.
+// We keep a no-op proxy so legacy references don't throw.
+const btnCheckApis = document.getElementById('btn-check-apis') || {
+    classList: { add() {}, remove() {} },
+    addEventListener() {}
+};
 
 function setProviderRow(provider, state, message, latency) {
     const row = document.querySelector(`.api-row[data-provider="${provider}"]`);
@@ -800,22 +805,23 @@ function closeSettings() {
 
 function gateRunButton() {
     const btn = document.getElementById('btn-run');
-    const settingsBtn = document.getElementById('btn-settings');
+    // The sidebar Settings nav item pulses red when keys are missing
+    const settingsNav = document.querySelector('.sidebar [data-action="settings"]');
     if (hasAnyKey()) {
         btn.classList.remove('disabled');
         btn.removeAttribute('disabled');
         btn.title = 'Run the multi-agent pipeline';
-        settingsBtn.classList.remove('needs-keys');
+        if (settingsNav) settingsNav.classList.remove('needs-keys');
     } else {
         btn.classList.add('disabled');
         btn.setAttribute('disabled', 'disabled');
         btn.title = 'Add API keys in Settings first';
-        settingsBtn.classList.add('needs-keys');
+        if (settingsNav) settingsNav.classList.add('needs-keys');
     }
 }
 
 function wireSettingsModal() {
-    document.getElementById('btn-settings').addEventListener('click', openSettings);
+    // Settings button is in the sidebar nav now (wired by wireSidebar)
     document.getElementById('settings-close').addEventListener('click', closeSettings);
     document.getElementById('settings-cancel').addEventListener('click', closeSettings);
 
@@ -925,7 +931,6 @@ document.querySelectorAll('.agent-card').forEach(c => c.addEventListener('click'
 document.getElementById('btn-run').addEventListener('click', runPipeline);
 document.getElementById('btn-reset').addEventListener('click', resetAll);
 document.getElementById('btn-clear-log').addEventListener('click', () => { logBody.innerHTML = ''; });
-btnCheckApis.addEventListener('click', runApiCheck);
 document.getElementById('api-modal-close').addEventListener('click', closeApiModal);
 document.getElementById('api-modal-done').addEventListener('click', closeApiModal);
 document.getElementById('api-modal-recheck').addEventListener('click', runApiCheck);
