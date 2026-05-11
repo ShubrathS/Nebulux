@@ -1,0 +1,25 @@
+{
+  "name": "nebulux-orchestrator",
+  "version": "1.0.0",
+  "description": "Nebulux Multi-Agent Orchestration System",
+  "main": "index.js",
+  "author": "Shubrath Shakyavanshi",
+  "license": "SEE LICENSE IN LICENSE",
+  "private": true,
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "@google/genai": "^1.0.0",
+    "axios": "^1.7.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  }
+}

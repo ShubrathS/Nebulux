@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nebulux ✧ — Multi-Agent Orchestrator</title>
+    <meta name="description" content="Real multi-agent workflow orchestrator using Claude, Gemini, Kimi K2.6, and Gemma 4.">
+    <meta name="author" content="Shubrath Shakyavanshi">
+    <meta name="copyright" content="© 2026 Shubrath Shakyavanshi — All Rights Reserved">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="starsCanvas"></canvas>
+    <div class="app">
+        <header class="header">
+            <div class="brand"><span class="brand-icon">✧</span><h1>Nebulux</h1><span class="tag">Multi-Agent Orchestrator</span></div>
+            <div class="header-right">
+                <span class="connection-dot" id="conn-dot" title="Server status">●</span>
+                <button class="btn btn-settings" id="btn-settings" title="API keys & settings" aria-label="Settings">⚙️</button>
+                <button class="btn btn-check" id="btn-check-apis" title="Verify all model APIs are reachable">🔌 Check APIs</button>
+                <button class="btn btn-run" id="btn-run"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg><span>Run Pipeline</span></button>
+                <button class="btn btn-reset" id="btn-reset">↻ Reset</button>
+            </div>
+        </header>
+
+        <main class="main">
+            <!-- Project Input Section -->
+            <section class="project-input-section" id="project-section">
+                <div class="project-input-card">
+                    <h2>🚀 Describe Your Project</h2>
+                    <p class="input-hint-text">Tell the agents what to build. Be as detailed as possible.</p>
+                    <textarea id="project-desc" class="project-textarea" rows="4" placeholder="Example: Build a task management app with user authentication, CRUD operations for tasks, a modern dark-themed UI with drag-and-drop task boards, and REST API backend..."></textarea>
+                    <div class="model-badges">
+                        <span class="model-badge claude">🧠 Claude (Supervisor + Planner + DevOps)</span>
+                        <span class="model-badge gemini">💎 Gemini (Frontend)</span>
+                        <span class="model-badge kimi">🌙 Kimi K2.6 (UI/UX)</span>
+                        <span class="model-badge gemma">🔧 Gemma 4 (Backend)</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Agent Pipeline -->
+            <section class="pipeline-section">
+                <div class="pipeline">
+                    <div class="supervisor-wrap">
+                        <div class="agent-card supervisor" id="agent-supervisor" data-agent="supervisor">
+                            <div class="agent-pulse"></div>
+                            <div class="agent-icon">🧠</div>
+                            <div class="agent-name">Supervisor</div>
+                            <div class="agent-role">Main Controller</div>
+                            <select class="model-select" data-stage="supervisor" aria-label="Model for Supervisor">
+                                <option value="claude">🧠 Claude</option>
+                                <option value="gemini">💎 Gemini</option>
+                                <option value="kimi">🌙 Kimi K2.6</option>
+                                <option value="gemma">🔧 Gemma 4</option>
+                            </select>
+                            <div class="agent-status" id="status-supervisor">Idle</div>
+                        </div>
+                    </div>
+                    <div class="agent-row">
+                        <div class="agent-card agent" id="agent-planner" data-agent="planner">
+                            <div class="agent-pulse"></div>
+                            <div class="agent-step">1</div>
+                            <div class="agent-icon">📋</div>
+                            <div class="agent-name">Planner</div>
+                            <div class="agent-role">Architecture &amp; plan</div>
+                            <select class="model-select" data-stage="planner" aria-label="Model for Planner">
+                                <option value="claude">🧠 Claude</option>
+                                <option value="gemini">💎 Gemini</option>
+                                <option value="kimi">🌙 Kimi K2.6</option>
+                                <option value="gemma">🔧 Gemma 4</option>
+                            </select>
+                            <div class="agent-status" id="status-planner">Waiting</div>
+                            <div class="agent-progress"><div class="progress-bar" id="progress-planner"></div></div>
+                        </div>
+                        <div class="flow-arrow" id="arrow-0"><div class="arrow-line"></div><div class="arrow-head">▶</div></div>
+                        <div class="agent-card agent" id="agent-designer" data-agent="designer">
+                            <div class="agent-pulse"></div>
+                            <div class="agent-step">2</div>
+                            <div class="agent-icon">🎨</div>
+                            <div class="agent-name">UI/UX Designer</div>
+                            <div class="agent-role">Frontend &amp; design</div>
+                            <select class="model-select" data-stage="designer" aria-label="Model for Designer">
+                                <option value="claude">🧠 Claude</option>
+                                <option value="gemini">💎 Gemini</option>
+                                <option value="kimi">🌙 Kimi K2.6</option>
+                                <option value="gemma">🔧 Gemma 4</option>
+                            </select>
+                            <div class="agent-status" id="status-designer">Waiting</div>
+                            <div class="agent-progress"><div class="progress-bar" id="progress-designer"></div></div>
+                        </div>
+                        <div class="flow-arrow" id="arrow-1"><div class="arrow-line"></div><div class="arrow-head">▶</div></div>
+                        <div class="agent-card agent" id="agent-coder" data-agent="coder">
+                            <div class="agent-pulse"></div>
+                            <div class="agent-step">3</div>
+                            <div class="agent-icon">⚙️</div>
+                            <div class="agent-name">Backend Coder</div>
+                            <div class="agent-role">Server &amp; APIs</div>
+                            <select class="model-select" data-stage="coder" aria-label="Model for Coder">
+                                <option value="claude">🧠 Claude</option>
+                                <option value="gemini">💎 Gemini</option>
+                                <option value="kimi">🌙 Kimi K2.6</option>
+                                <option value="gemma">🔧 Gemma 4</option>
+                            </select>
+                            <div class="agent-status" id="status-coder">Waiting</div>
+                            <div class="agent-progress"><div class="progress-bar" id="progress-coder"></div></div>
+                        </div>
+                        <div class="flow-arrow" id="arrow-2"><div class="arrow-line"></div><div class="arrow-head">▶</div></div>
+                        <div class="agent-card agent" id="agent-devops" data-agent="devops">
+                            <div class="agent-pulse"></div>
+                            <div class="agent-step">4</div>
+                            <div class="agent-icon">🚀</div>
+                            <div class="agent-name">DevOps / Tester</div>
+                            <div class="agent-role">Tests &amp; deploy</div>
+                            <select class="model-select" data-stage="devops" aria-label="Model for DevOps">
+                                <option value="claude">🧠 Claude</option>
+                                <option value="gemini">💎 Gemini</option>
+                                <option value="kimi">🌙 Kimi K2.6</option>
+                                <option value="gemma">🔧 Gemma 4</option>
+                            </select>
+                            <div class="agent-status" id="status-devops">Waiting</div>
+                            <div class="agent-progress"><div class="progress-bar" id="progress-devops"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Bottom Panels -->
+            <section class="panels-section">
+                <div class="panel detail-panel" id="detail-panel">
+                    <div class="panel-head"><h2 id="detail-title">🧠 Supervisor — Overview</h2><span class="panel-badge" id="detail-badge">Idle</span></div>
+                    <div class="panel-body" id="detail-body">
+                        <p class="detail-desc" id="detail-desc">The Supervisor agent (Claude) monitors all 4 agents, validates outputs at each stage, and coordinates handoffs between pipeline stages.</p>
+                        <div class="detail-tasks" id="detail-tasks"></div>
+                    </div>
+                </div>
+                <div class="panel log-panel">
+                    <div class="panel-head"><h2>📡 Live Execution Log</h2><button class="btn-clear-log" id="btn-clear-log">Clear</button></div>
+                    <div class="panel-body log-body" id="log-body">
+                        <div class="log-entry log-info"><span class="log-time">--:--:--</span><span class="log-msg">Waiting for server connection...</span></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <div class="footer-inner">
+                <div class="footer-left">
+                    <span class="footer-brand">✧ Nebulux</span>
+                    <span class="footer-sep">·</span>
+                    <span class="footer-text">Multi-Agent Orchestrator</span>
+                </div>
+                <div class="footer-center">
+                    <span class="footer-copyright">© <span id="footer-year">2026</span> <strong>Shubrath Shakyavanshi</strong></span>
+                    <span class="footer-sep">·</span>
+                    <span class="footer-text">All Rights Reserved</span>
+                </div>
+                <div class="footer-right">
+                    <span class="footer-text footer-disclaimer">Unauthorized copying, modification, or redistribution is prohibited.</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- API Health Modal -->
+    <div class="modal-backdrop" id="api-modal" hidden>
+        <div class="modal-card" role="dialog" aria-labelledby="api-modal-title">
+            <div class="modal-head">
+                <h2 id="api-modal-title">🔌 API Connection Status</h2>
+                <button class="modal-close" id="api-modal-close" aria-label="Close">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-hint" id="api-modal-hint">Pinging each provider with a tiny request to verify connectivity.</p>
+                <ul class="api-list" id="api-list">
+                    <li class="api-row" data-provider="claude">
+                        <span class="api-dot pending"></span>
+                        <div class="api-info">
+                            <div class="api-name">🧠 Claude <span class="api-sub">Anthropic API</span></div>
+                            <div class="api-msg">Waiting…</div>
+                        </div>
+                        <span class="api-latency"></span>
+                    </li>
+                    <li class="api-row" data-provider="gemini">
+                        <span class="api-dot pending"></span>
+                        <div class="api-info">
+                            <div class="api-name">💎 Gemini <span class="api-sub">Google GenAI</span></div>
+                            <div class="api-msg">Waiting…</div>
+                        </div>
+                        <span class="api-latency"></span>
+                    </li>
+                    <li class="api-row" data-provider="kimi">
+                        <span class="api-dot pending"></span>
+                        <div class="api-info">
+                            <div class="api-name">🌙 Kimi K2.6 <span class="api-sub">Moonshot API</span></div>
+                            <div class="api-msg">Waiting…</div>
+                        </div>
+                        <span class="api-latency"></span>
+                    </li>
+                    <li class="api-row" data-provider="ollama">
+                        <span class="api-dot pending"></span>
+                        <div class="api-info">
+                            <div class="api-name">🔧 Gemma 4 <span class="api-sub">Ollama (local)</span></div>
+                            <div class="api-msg">Waiting…</div>
+                        </div>
+                        <span class="api-latency"></span>
+                    </li>
+                </ul>
+                <div class="modal-summary" id="api-summary"></div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-reset" id="api-modal-recheck">↻ Re-check</button>
+                <button class="btn btn-run" id="api-modal-done"><span>Done</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings (BYOK) Modal -->
+    <div class="modal-backdrop" id="settings-modal" hidden>
+        <div class="modal-card settings-card" role="dialog" aria-labelledby="settings-title">
+            <div class="modal-head">
+                <h2 id="settings-title">⚙️ Your API Keys</h2>
+                <button class="modal-close" id="settings-close" aria-label="Close">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-hint">Add the API keys for the models you want to use. Keys are saved in your browser only (<code>localStorage</code>) and sent to the Nebulux server only when you run the pipeline. They are never logged or stored on the server.</p>
+
+                <div class="key-row">
+                    <label class="key-label" for="key-anthropic">🧠 Anthropic / Claude</label>
+                    <div class="key-input-wrap">
+                        <input type="password" class="key-input" id="key-anthropic" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+                        <button type="button" class="key-eye" data-toggle="key-anthropic" aria-label="Show/hide">👁</button>
+                    </div>
+                    <a class="key-help" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Get a key →</a>
+                </div>
+
+                <div class="key-row">
+                    <label class="key-label" for="key-gemini">💎 Google Gemini</label>
+                    <div class="key-input-wrap">
+                        <input type="password" class="key-input" id="key-gemini" placeholder="AIza..." autocomplete="off" spellcheck="false">
+                        <button type="button" class="key-eye" data-toggle="key-gemini" aria-label="Show/hide">👁</button>
+                    </div>
+                    <a class="key-help" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Get a key →</a>
+                </div>
+
+                <div class="key-row">
+                    <label class="key-label" for="key-kimi-url">🌙 Kimi K2.6 — endpoint URL</label>
+                    <input type="text" class="key-input" id="key-kimi-url" placeholder="https://integrate.api.nvidia.com  or  http://localhost:8000" autocomplete="off" spellcheck="false">
+                </div>
+                <div class="key-row">
+                    <label class="key-label" for="key-kimi">🌙 Kimi K2.6 — API key <span class="key-optional">(required for NVIDIA hosted; optional for local NIM)</span></label>
+                    <div class="key-input-wrap">
+                        <input type="password" class="key-input" id="key-kimi" placeholder="nvapi-..." autocomplete="off" spellcheck="false">
+                        <button type="button" class="key-eye" data-toggle="key-kimi" aria-label="Show/hide">👁</button>
+                    </div>
+                    <a class="key-help" href="https://build.nvidia.com/moonshotai/kimi-k2-6" target="_blank" rel="noopener">Get a key →</a>
+                </div>
+
+                <div class="key-row">
+                    <label class="key-label" for="key-ollama-url">🔧 Gemma 4 — Ollama URL</label>
+                    <input type="text" class="key-input" id="key-ollama-url" placeholder="http://localhost:11434" autocomplete="off" spellcheck="false">
+                </div>
+                <div class="key-row">
+                    <label class="key-label" for="key-ollama-model">🔧 Gemma 4 — model name</label>
+                    <input type="text" class="key-input" id="key-ollama-model" placeholder="gemma4:latest" autocomplete="off" spellcheck="false">
+                </div>
+                <div class="key-note key-warn">
+                    ⚠️ <b>Gemma 4 runs locally via Ollama.</b> If you're using Nebulux from a hosted/remote server, that server cannot reach <code>localhost:11434</code> on your machine. To use Gemma 4 in hosted mode, expose your local Ollama via a tunnel (e.g. <code>ngrok</code>) and paste the public URL above. Otherwise, pick a different model for each stage.
+                </div>
+
+                <div class="custom-models-section">
+                    <div class="section-title">
+                        ⚡ Custom Models <span class="section-sub">(OpenAI-compatible endpoints)</span>
+                    </div>
+                    <p class="modal-hint" style="margin-bottom:10px">Add any provider that exposes an OpenAI-compatible API: DeepSeek, Groq, OpenRouter, Together, Mistral, local llama.cpp / vLLM / LM Studio, etc.</p>
+
+                    <div class="custom-models-list" id="custom-models-list">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <button type="button" class="btn btn-add-custom" id="btn-add-custom">+ Add Custom Model</button>
+
+                    <div class="custom-model-form" id="custom-model-form" hidden>
+                        <input type="hidden" id="custom-id">
+                        <div class="key-row">
+                            <label class="key-label" for="custom-name">Display name <span class="key-optional">(shown in dropdowns)</span></label>
+                            <input type="text" class="key-input" id="custom-name" placeholder="DeepSeek Coder" autocomplete="off" spellcheck="false">
+                        </div>
+                        <div class="key-row">
+                            <label class="key-label" for="custom-baseurl">Base URL <span class="key-optional">(must include /v1)</span></label>
+                            <input type="text" class="key-input" id="custom-baseurl" placeholder="https://api.deepseek.com/v1" autocomplete="off" spellcheck="false">
+                        </div>
+                        <div class="key-row">
+                            <label class="key-label" for="custom-model">Model ID <span class="key-optional">(as accepted by the endpoint)</span></label>
+                            <input type="text" class="key-input" id="custom-model" placeholder="deepseek-coder" autocomplete="off" spellcheck="false">
+                        </div>
+                        <div class="key-row">
+                            <label class="key-label" for="custom-key">API Key <span class="key-optional">(optional for local endpoints)</span></label>
+                            <div class="key-input-wrap">
+                                <input type="password" class="key-input" id="custom-key" placeholder="sk-... or leave empty" autocomplete="off" spellcheck="false">
+                                <button type="button" class="key-eye" data-toggle="custom-key" aria-label="Show/hide">👁</button>
+                            </div>
+                        </div>
+                        <div class="custom-form-actions">
+                            <button type="button" class="btn btn-reset" id="custom-form-cancel">Cancel</button>
+                            <button type="button" class="btn btn-run" id="custom-form-save"><span>Save model</span></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-summary" id="settings-summary"></div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-reset" id="settings-clear">🗑 Clear all</button>
+                <div style="flex:1"></div>
+                <button class="btn btn-reset" id="settings-cancel">Cancel</button>
+                <button class="btn btn-run" id="settings-save"><span>Save</span></button>
+            </div>
+            <div class="modal-credit">
+                Nebulux is © 2026 <strong>Shubrath Shakyavanshi</strong>. Personal/evaluation use only — see <code>LICENSE</code> for terms.
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

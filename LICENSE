@@ -1,0 +1,105 @@
+PROPRIETARY SOFTWARE LICENSE
+============================
+
+Copyright (c) 2026 Shubrath Shakyavanshi. All Rights Reserved.
+
+Project: Nebulux — Multi-Agent Orchestrator
+
+
+1. OWNERSHIP
+
+   This software, including all source code, documentation, design,
+   architecture, and accompanying materials (collectively, the "Software"),
+   is the exclusive intellectual property of Shubrath Shakyavanshi
+   ("the Author"). The Software is protected by copyright laws and
+   international copyright treaties, as well as other intellectual property
+   laws and treaties.
+
+
+2. GRANT OF LIMITED PERSONAL USE
+
+   The Author grants you a non-exclusive, non-transferable, revocable
+   license to view and run the Software solely for personal, non-commercial
+   evaluation purposes, subject to the restrictions below.
+
+
+3. RESTRICTIONS
+
+   You may NOT, without express prior written permission from the Author:
+
+   (a) Copy, reproduce, distribute, sublicense, sell, rent, lease, or
+       otherwise transfer the Software or any portion of it;
+
+   (b) Modify, adapt, translate, reverse-engineer, decompile, disassemble,
+       or create derivative works based on the Software;
+
+   (c) Remove, alter, or obscure any copyright notice, author attribution,
+       trademark, or other proprietary marking contained in the Software;
+
+   (d) Use the Software, in whole or in part, in any product, service, or
+       project that is offered to third parties, whether commercially or
+       not;
+
+   (e) Use the Software to develop a competing product;
+
+   (f) Publicly display, perform, publish, or host the Software in a way
+       that allows others to access it as a service without a separate
+       commercial agreement with the Author.
+
+
+4. THIRD-PARTY COMPONENTS
+
+   The Software depends on third-party libraries and services (including
+   but not limited to: Express, ws, axios, dotenv, the Anthropic SDK,
+   the Google GenAI SDK, and the LLM provider APIs themselves). Those
+   components are governed by their own respective licenses. This License
+   applies only to the Author's original code and project structure.
+
+
+5. USER-PROVIDED API KEYS
+
+   The Software requires the end user to supply their own API keys for
+   third-party LLM providers (Anthropic, Google, Moonshot/NVIDIA, Ollama,
+   and any user-configured custom endpoints). The Author is not a party
+   to the user's relationship with those providers and is not responsible
+   for usage charges, rate limits, data handling, or any provider-side
+   terms of service.
+
+
+6. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY
+   OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+   WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+   ACCURACY, RELIABILITY, AND NON-INFRINGEMENT. THE AUTHOR DOES NOT
+   WARRANT THAT THE SOFTWARE WILL BE UNINTERRUPTED, ERROR-FREE, OR
+   SECURE.
+
+
+7. LIMITATION OF LIABILITY
+
+   IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR
+   OTHER LIABILITY (INCLUDING WITHOUT LIMITATION DIRECT, INDIRECT,
+   INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES) ARISING FROM,
+   OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+   IN THE SOFTWARE, INCLUDING BUT NOT LIMITED TO ANY COSTS INCURRED FROM
+   USE OF THIRD-PARTY LLM PROVIDERS.
+
+
+8. TERMINATION
+
+   This License is effective until terminated. The license granted in
+   Section 2 is automatically terminated, without notice, if you fail to
+   comply with any of its terms. Upon termination, you must cease all use
+   of the Software and destroy all copies in your possession.
+
+
+9. CONTACT FOR LICENSING / COMMERCIAL USE
+
+   For commercial use, redistribution rights, or any use not expressly
+   permitted by this License, contact the Author:
+
+       Shubrath Shakyavanshi
+
+
+All rights not expressly granted herein are reserved by the Author.
