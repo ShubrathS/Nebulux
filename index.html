@@ -15,115 +15,176 @@
 <body>
     <canvas id="starsCanvas"></canvas>
     <div class="app">
-        <header class="header">
-            <div class="brand"><span class="brand-icon">✧</span><h1>Nebulux</h1><span class="tag">Multi-Agent Orchestrator</span></div>
-            <div class="header-right">
-                <span class="connection-dot" id="conn-dot" title="Server status">●</span>
-                <button class="btn btn-settings" id="btn-settings" title="API keys & settings" aria-label="Settings">⚙️</button>
-                <button class="btn btn-check" id="btn-check-apis" title="Verify all model APIs are reachable">🔌 Check APIs</button>
-                <button class="btn btn-run" id="btn-run"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg><span>Run Pipeline</span></button>
-                <button class="btn btn-reset" id="btn-reset">↻ Reset</button>
+        <!-- ============== SIDEBAR ============== -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <span class="brand-mark">✧</span>
+                <div class="brand-text">
+                    <h1>Nebulux</h1>
+                    <span class="brand-tag">Multi-Agent Orchestrator</span>
+                </div>
             </div>
-        </header>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-view="dashboard">
+                    <span class="nav-icon">🗂</span><span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-action="history">
+                    <span class="nav-icon">🕘</span><span>History</span>
+                    <span class="nav-badge" id="history-count" hidden>0</span>
+                </button>
+                <button class="nav-item" data-action="settings">
+                    <span class="nav-icon">⚙️</span><span>Settings</span>
+                </button>
+                <button class="nav-item" data-action="check-apis">
+                    <span class="nav-icon">🔌</span><span>Check APIs</span>
+                </button>
+                <a class="nav-item" href="https://github.com/ShubrathS/Nebulux" target="_blank" rel="noopener">
+                    <span class="nav-icon">⌬</span><span>GitHub</span><span class="nav-ext">↗</span>
+                </a>
+                <button class="nav-item" data-action="license">
+                    <span class="nav-icon">📜</span><span>License</span>
+                </button>
+                <button class="nav-item" data-action="about">
+                    <span class="nav-icon">ⓘ</span><span>About</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="sidebar-status">
+                    <span class="connection-dot" id="conn-dot" title="Server status">●</span>
+                    <span id="conn-text">Connecting…</span>
+                </div>
+                <div class="sidebar-credit">
+                    © <span id="footer-year">2026</span> <strong>Shubrath Shakyavanshi</strong>
+                </div>
+            </div>
+        </aside>
 
+        <!-- ============== MAIN ============== -->
         <main class="main">
-            <!-- Project Input Section -->
-            <section class="project-input-section" id="project-section">
-                <div class="project-input-card">
-                    <h2>🚀 Describe Your Project</h2>
-                    <p class="input-hint-text">Tell the agents what to build. Be as detailed as possible.</p>
-                    <textarea id="project-desc" class="project-textarea" rows="4" placeholder="Example: Build a task management app with user authentication, CRUD operations for tasks, a modern dark-themed UI with drag-and-drop task boards, and REST API backend..."></textarea>
-                    <div class="model-badges">
-                        <span class="model-badge claude">🧠 Claude (Supervisor + Planner + DevOps)</span>
-                        <span class="model-badge gemini">💎 Gemini (Frontend)</span>
-                        <span class="model-badge kimi">🌙 Kimi K2.6 (UI/UX)</span>
-                        <span class="model-badge gemma">🔧 Gemma 4 (Backend)</span>
-                    </div>
+            <!-- Top bar -->
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <h2 class="page-title">Dashboard</h2>
+                    <span class="page-sub" id="page-sub">Build a complete project with a team of AI agents</span>
+                </div>
+                <div class="top-bar-right">
+                    <button class="btn btn-reset" id="btn-reset" title="Reset pipeline">↻ Reset</button>
+                    <button class="btn btn-run" id="btn-run" title="Execute the multi-agent pipeline">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+                        <span>Run Pipeline</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Stat cards (real data only) -->
+            <section class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-label">Agents</div>
+                    <div class="stat-value" id="stat-agents">5</div>
+                    <div class="stat-sub">Planner · Designer · Coder · DevOps · Supervisor</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Pipelines Run</div>
+                    <div class="stat-value" id="stat-runs">0</div>
+                    <div class="stat-sub">Lifetime on this device</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Connected Models</div>
+                    <div class="stat-value" id="stat-models">0</div>
+                    <div class="stat-sub" id="stat-models-sub">Add keys in Settings</div>
                 </div>
             </section>
 
-            <!-- Agent Pipeline -->
-            <section class="pipeline-section">
-                <div class="pipeline">
-                    <div class="supervisor-wrap">
-                        <div class="agent-card supervisor" id="agent-supervisor" data-agent="supervisor">
-                            <div class="agent-pulse"></div>
-                            <div class="agent-icon">🧠</div>
-                            <div class="agent-name">Supervisor</div>
-                            <div class="agent-role">Main Controller</div>
-                            <select class="model-select" data-stage="supervisor" aria-label="Model for Supervisor">
-                                <option value="claude">🧠 Claude</option>
-                                <option value="gemini">💎 Gemini</option>
-                                <option value="kimi">🌙 Kimi K2.6</option>
-                                <option value="gemma">🔧 Gemma 4</option>
-                            </select>
-                            <div class="agent-status" id="status-supervisor">Idle</div>
-                        </div>
+            <!-- Glowing project input -->
+            <section class="project-input-section">
+                <div class="project-input-card glow">
+                    <div class="project-input-header">
+                        <h2>DESCRIBE YOUR PROJECT</h2>
+                        <span class="char-counter" id="char-counter">0 / 8000</span>
                     </div>
-                    <div class="agent-row">
-                        <div class="agent-card agent" id="agent-planner" data-agent="planner">
-                            <div class="agent-pulse"></div>
-                            <div class="agent-step">1</div>
-                            <div class="agent-icon">📋</div>
-                            <div class="agent-name">Planner</div>
-                            <div class="agent-role">Architecture &amp; plan</div>
-                            <select class="model-select" data-stage="planner" aria-label="Model for Planner">
-                                <option value="claude">🧠 Claude</option>
-                                <option value="gemini">💎 Gemini</option>
-                                <option value="kimi">🌙 Kimi K2.6</option>
-                                <option value="gemma">🔧 Gemma 4</option>
-                            </select>
-                            <div class="agent-status" id="status-planner">Waiting</div>
-                            <div class="agent-progress"><div class="progress-bar" id="progress-planner"></div></div>
-                        </div>
-                        <div class="flow-arrow" id="arrow-0"><div class="arrow-line"></div><div class="arrow-head">▶</div></div>
-                        <div class="agent-card agent" id="agent-designer" data-agent="designer">
-                            <div class="agent-pulse"></div>
-                            <div class="agent-step">2</div>
-                            <div class="agent-icon">🎨</div>
-                            <div class="agent-name">UI/UX Designer</div>
-                            <div class="agent-role">Frontend &amp; design</div>
-                            <select class="model-select" data-stage="designer" aria-label="Model for Designer">
-                                <option value="claude">🧠 Claude</option>
-                                <option value="gemini">💎 Gemini</option>
-                                <option value="kimi">🌙 Kimi K2.6</option>
-                                <option value="gemma">🔧 Gemma 4</option>
-                            </select>
-                            <div class="agent-status" id="status-designer">Waiting</div>
-                            <div class="agent-progress"><div class="progress-bar" id="progress-designer"></div></div>
-                        </div>
-                        <div class="flow-arrow" id="arrow-1"><div class="arrow-line"></div><div class="arrow-head">▶</div></div>
-                        <div class="agent-card agent" id="agent-coder" data-agent="coder">
-                            <div class="agent-pulse"></div>
-                            <div class="agent-step">3</div>
-                            <div class="agent-icon">⚙️</div>
-                            <div class="agent-name">Backend Coder</div>
-                            <div class="agent-role">Server &amp; APIs</div>
-                            <select class="model-select" data-stage="coder" aria-label="Model for Coder">
-                                <option value="claude">🧠 Claude</option>
-                                <option value="gemini">💎 Gemini</option>
-                                <option value="kimi">🌙 Kimi K2.6</option>
-                                <option value="gemma">🔧 Gemma 4</option>
-                            </select>
-                            <div class="agent-status" id="status-coder">Waiting</div>
-                            <div class="agent-progress"><div class="progress-bar" id="progress-coder"></div></div>
-                        </div>
-                        <div class="flow-arrow" id="arrow-2"><div class="arrow-line"></div><div class="arrow-head">▶</div></div>
-                        <div class="agent-card agent" id="agent-devops" data-agent="devops">
-                            <div class="agent-pulse"></div>
-                            <div class="agent-step">4</div>
-                            <div class="agent-icon">🚀</div>
-                            <div class="agent-name">DevOps / Tester</div>
-                            <div class="agent-role">Tests &amp; deploy</div>
-                            <select class="model-select" data-stage="devops" aria-label="Model for DevOps">
-                                <option value="claude">🧠 Claude</option>
-                                <option value="gemini">💎 Gemini</option>
-                                <option value="kimi">🌙 Kimi K2.6</option>
-                                <option value="gemma">🔧 Gemma 4</option>
-                            </select>
-                            <div class="agent-status" id="status-devops">Waiting</div>
-                            <div class="agent-progress"><div class="progress-bar" id="progress-devops"></div></div>
-                        </div>
+                    <textarea id="project-desc" class="project-textarea" rows="3"
+                        placeholder="Define the scope, goals, and core features of your project here..."
+                        maxlength="8000"></textarea>
+                </div>
+            </section>
+
+            <!-- Connection lines + Agent pipeline -->
+            <section class="pipeline-section">
+                <svg class="pipeline-connectors" id="pipeline-connectors" aria-hidden="true" preserveAspectRatio="none"></svg>
+                <div class="agent-row" id="agent-row">
+                    <div class="agent-card supervisor" id="agent-supervisor" data-agent="supervisor">
+                        <div class="agent-pulse"></div>
+                        <div class="icon-box icon-supervisor">🧠</div>
+                        <div class="agent-name">Supervisor</div>
+                        <div class="agent-role">Oversees flow, assigns tasks, manages handoffs</div>
+                        <select class="model-select" data-stage="supervisor" aria-label="Model for Supervisor">
+                            <option value="claude">🧠 Claude</option>
+                            <option value="gemini">💎 Gemini</option>
+                            <option value="kimi">🌙 Kimi K2.6</option>
+                            <option value="gemma">🔧 Gemma 4</option>
+                        </select>
+                        <div class="agent-progress"><div class="progress-bar" id="progress-supervisor"></div></div>
+                        <div class="agent-status" id="status-supervisor">Idle</div>
+                    </div>
+                    <div class="agent-card agent" id="agent-planner" data-agent="planner">
+                        <div class="agent-pulse"></div>
+                        <div class="agent-step">1</div>
+                        <div class="icon-box icon-planner">📋</div>
+                        <div class="agent-name">Planner</div>
+                        <div class="agent-role">Creates milestones, roadmaps, feature requirements</div>
+                        <select class="model-select" data-stage="planner" aria-label="Model for Planner">
+                            <option value="claude">🧠 Claude</option>
+                            <option value="gemini">💎 Gemini</option>
+                            <option value="kimi">🌙 Kimi K2.6</option>
+                            <option value="gemma">🔧 Gemma 4</option>
+                        </select>
+                        <div class="agent-progress"><div class="progress-bar" id="progress-planner"></div></div>
+                        <div class="agent-status" id="status-planner">Waiting</div>
+                    </div>
+                    <div class="agent-card agent" id="agent-designer" data-agent="designer">
+                        <div class="agent-pulse"></div>
+                        <div class="agent-step">2</div>
+                        <div class="icon-box icon-designer">🎨</div>
+                        <div class="agent-name">UI/UX Designer</div>
+                        <div class="agent-role">Builds wireframes, mockups, and visual assets</div>
+                        <select class="model-select" data-stage="designer" aria-label="Model for Designer">
+                            <option value="claude">🧠 Claude</option>
+                            <option value="gemini">💎 Gemini</option>
+                            <option value="kimi">🌙 Kimi K2.6</option>
+                            <option value="gemma">🔧 Gemma 4</option>
+                        </select>
+                        <div class="agent-progress"><div class="progress-bar" id="progress-designer"></div></div>
+                        <div class="agent-status" id="status-designer">Waiting</div>
+                    </div>
+                    <div class="agent-card agent" id="agent-coder" data-agent="coder">
+                        <div class="agent-pulse"></div>
+                        <div class="agent-step">3</div>
+                        <div class="icon-box icon-coder">⚙️</div>
+                        <div class="agent-name">Backend Coder</div>
+                        <div class="agent-role">Builds APIs, database schemas, and server logic</div>
+                        <select class="model-select" data-stage="coder" aria-label="Model for Coder">
+                            <option value="claude">🧠 Claude</option>
+                            <option value="gemini">💎 Gemini</option>
+                            <option value="kimi">🌙 Kimi K2.6</option>
+                            <option value="gemma">🔧 Gemma 4</option>
+                        </select>
+                        <div class="agent-progress"><div class="progress-bar" id="progress-coder"></div></div>
+                        <div class="agent-status" id="status-coder">Waiting</div>
+                    </div>
+                    <div class="agent-card agent" id="agent-devops" data-agent="devops">
+                        <div class="agent-pulse"></div>
+                        <div class="agent-step">4</div>
+                        <div class="icon-box icon-devops">🚀</div>
+                        <div class="agent-name">DevOps</div>
+                        <div class="agent-role">Tests, Docker, infrastructure, deployment</div>
+                        <select class="model-select" data-stage="devops" aria-label="Model for DevOps">
+                            <option value="claude">🧠 Claude</option>
+                            <option value="gemini">💎 Gemini</option>
+                            <option value="kimi">🌙 Kimi K2.6</option>
+                            <option value="gemma">🔧 Gemma 4</option>
+                        </select>
+                        <div class="agent-progress"><div class="progress-bar" id="progress-devops"></div></div>
+                        <div class="agent-status" id="status-devops">Idle</div>
                     </div>
                 </div>
             </section>
@@ -133,7 +194,7 @@
                 <div class="panel detail-panel" id="detail-panel">
                     <div class="panel-head"><h2 id="detail-title">🧠 Supervisor — Overview</h2><span class="panel-badge" id="detail-badge">Idle</span></div>
                     <div class="panel-body" id="detail-body">
-                        <p class="detail-desc" id="detail-desc">The Supervisor agent (Claude) monitors all 4 agents, validates outputs at each stage, and coordinates handoffs between pipeline stages.</p>
+                        <p class="detail-desc" id="detail-desc">The Supervisor agent monitors all agents, validates outputs at each stage, and coordinates handoffs between pipeline stages.</p>
                         <div class="detail-tasks" id="detail-tasks"></div>
                     </div>
                 </div>
@@ -145,24 +206,6 @@
                 </div>
             </section>
         </main>
-
-        <footer class="footer">
-            <div class="footer-inner">
-                <div class="footer-left">
-                    <span class="footer-brand">✧ Nebulux</span>
-                    <span class="footer-sep">·</span>
-                    <span class="footer-text">Multi-Agent Orchestrator</span>
-                </div>
-                <div class="footer-center">
-                    <span class="footer-copyright">© <span id="footer-year">2026</span> <strong>Shubrath Shakyavanshi</strong></span>
-                    <span class="footer-sep">·</span>
-                    <span class="footer-text">All Rights Reserved</span>
-                </div>
-                <div class="footer-right">
-                    <span class="footer-text footer-disclaimer">Unauthorized copying, modification, or redistribution is prohibited.</span>
-                </div>
-            </div>
-        </footer>
     </div>
 
     <!-- API Health Modal -->
@@ -320,6 +363,70 @@
             </div>
             <div class="modal-credit">
                 Nebulux is © 2026 <strong>Shubrath Shakyavanshi</strong>. Personal/evaluation use only — see <code>LICENSE</code> for terms.
+            </div>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div class="modal-backdrop" id="history-modal" hidden>
+        <div class="modal-card" role="dialog">
+            <div class="modal-head"><h2>🕘 Pipeline History</h2><button class="modal-close" data-close="history-modal">✕</button></div>
+            <div class="modal-body">
+                <p class="modal-hint">Your last pipeline runs (stored locally in this browser).</p>
+                <ul class="history-list" id="history-list"></ul>
+                <p class="modal-hint" id="history-empty" hidden>No runs yet. Type a project description and hit Run Pipeline to get started.</p>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-reset" id="history-clear">🗑 Clear history</button>
+                <div style="flex:1"></div>
+                <button class="btn btn-run" data-close="history-modal"><span>Done</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div class="modal-backdrop" id="about-modal" hidden>
+        <div class="modal-card" role="dialog">
+            <div class="modal-head"><h2>ⓘ About Nebulux</h2><button class="modal-close" data-close="about-modal">✕</button></div>
+            <div class="modal-body about-body">
+                <p><strong>Nebulux</strong> is a multi-agent orchestrator that turns a project description into a complete codebase — plan, design, backend, tests, Docker, README — by coordinating multiple LLMs as a specialist team.</p>
+                <h3>How it works</h3>
+                <ol>
+                    <li><strong>Planner</strong> reads your description and emits an implementation plan (tech stack, file structure, API contract, design requirements).</li>
+                    <li>The Planner also decides the <strong>execution order</strong> — backend-first, frontend-first, parallel, or skip stages your project doesn't need.</li>
+                    <li><strong>Designer</strong> &amp; <strong>Coder</strong> run in that order. Each can use any model you pick (Claude, Gemini, Kimi K2.6, Gemma 4, or any custom OpenAI-compatible endpoint).</li>
+                    <li><strong>Supervisor</strong> validates every handoff. <strong>DevOps</strong> writes tests, Docker config, and README at the end.</li>
+                </ol>
+                <h3>Privacy</h3>
+                <p>Your API keys are stored only in this browser's <code>localStorage</code> and sent with each pipeline request. The server never writes them to disk.</p>
+                <h3>Built by</h3>
+                <p><strong>Shubrath Shakyavanshi</strong> · <a href="https://github.com/ShubrathS/Nebulux" target="_blank" rel="noopener">github.com/ShubrathS/Nebulux</a></p>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-run" data-close="about-modal"><span>Close</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- License Modal -->
+    <div class="modal-backdrop" id="license-modal" hidden>
+        <div class="modal-card" role="dialog">
+            <div class="modal-head"><h2>📜 License</h2><button class="modal-close" data-close="license-modal">✕</button></div>
+            <div class="modal-body">
+                <p class="modal-hint"><strong>Proprietary Software License</strong> — © 2026 Shubrath Shakyavanshi. All Rights Reserved.</p>
+                <ul class="license-list">
+                    <li>You may view and run this software for <strong>personal, non-commercial evaluation</strong> only.</li>
+                    <li>You may <strong>NOT</strong> copy, redistribute, modify, sublicense, sell, or host it as a service.</li>
+                    <li>You may <strong>NOT</strong> remove or alter copyright/attribution.</li>
+                    <li>The software is provided "as is" with no warranty.</li>
+                    <li>Any unauthorized use automatically terminates this license.</li>
+                </ul>
+                <p class="modal-hint">Full text: see the <code>LICENSE</code> file in the source repository.</p>
+            </div>
+            <div class="modal-foot">
+                <a class="btn btn-reset" href="https://github.com/ShubrathS/Nebulux/blob/main/LICENSE" target="_blank" rel="noopener">View full LICENSE on GitHub ↗</a>
+                <div style="flex:1"></div>
+                <button class="btn btn-run" data-close="license-modal"><span>Close</span></button>
             </div>
         </div>
     </div>

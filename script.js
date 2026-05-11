@@ -34,7 +34,21 @@ const WS_BASE = location.protocol === 'file:' ? 'ws://localhost:3001' : (locatio
 
 let wsReconnectAttempt = 0;
 const WS_MAX_BACKOFF = 30000; // 30s cap
+function setConnState(state) {
+    const connText = document.getElementById('conn-text');
+    if (state === 'connected') {
+        connDot.style.color = '#10b981';
+        connDot.title = 'Connected to server';
+        if (connText) connText.textContent = 'Connected';
+    } else {
+        connDot.style.color = '#ef4444';
+        connDot.title = 'Disconnected';
+        if (connText) connText.textContent = state === 'connecting' ? 'Connecting…' : 'Disconnected';
+    }
+}
+
 function connectWS() {
+    setConnState('connecting');
     try {
         ws = new WebSocket(WS_BASE);
     } catch (e) {
@@ -44,18 +58,16 @@ function connectWS() {
 
     ws.onopen = () => {
         wsReconnectAttempt = 0;
-        connDot.style.color = '#10b981';
-        connDot.title = 'Connected to server';
+        setConnState('connected');
         log('✅ Connected to Nebulux server', 'success');
     };
 
     ws.onclose = () => {
-        connDot.style.color = '#ef4444';
-        connDot.title = 'Disconnected';
+        setConnState('disconnected');
         scheduleReconnect();
     };
 
-    ws.onerror = () => { connDot.style.color = '#ef4444'; };
+    ws.onerror = () => { setConnState('disconnected'); };
 
     ws.onmessage = (event) => {
         let data;
@@ -102,6 +114,8 @@ function handleServerMessage(data) {
             const btnRun = document.getElementById('btn-run');
             btnRun.classList.remove('running');
             btnRun.querySelector('span').textContent = 'Run Pipeline';
+            bumpRunCount();
+            refreshStats();
             log('✨ Pipeline complete! Check the /output folder for generated files.', 'success');
             break;
         case 'error':
@@ -151,21 +165,23 @@ function applyPipelineOrder(order, parallel, skipped) {
     cards.forEach(c => firsts.set(c.dataset.agent, c.getBoundingClientRect()));
 
     // 2) Compute new logical position for each card
-    const fullSequence = ['planner', ...order, 'devops'];
+    // Supervisor is always first, DevOps always last; Planner is always second.
+    // Designer/Coder swap or hide based on the order argument.
+    const fullSequence = ['supervisor', 'planner', ...order, 'devops'];
     cards.forEach(c => {
         const stage = c.dataset.agent;
         c.classList.remove('parallel', 'skipped');
         const idx = fullSequence.indexOf(stage);
         if (idx === -1) {
-            // Stage not in pipeline → mark skipped (keep visible but dim/struck-through)
             c.classList.add('skipped');
-            c.style.order = String(99 + cards.indexOf(c)); // push to end
+            c.style.order = String(99 + cards.indexOf(c));
             const badge = c.querySelector('.agent-step');
             if (badge) badge.textContent = '–';
         } else {
             c.style.order = String(idx * 10);
             const badge = c.querySelector('.agent-step');
-            if (badge && stage !== 'planner') badge.textContent = String(idx + 1);
+            // Supervisor has no step badge; Planner is step 1, others follow
+            if (badge && stage !== 'supervisor') badge.textContent = String(idx);
         }
     });
     if (parallel) {
@@ -204,21 +220,100 @@ function applyPipelineOrder(order, parallel, skipped) {
     });
 
     log(`🧭 Pipeline order: planner → ${order.join(parallel ? ' ∥ ' : ' → ')} → devops${skipped.length ? ` (skipped: ${skipped.join(', ')})` : ''}`, 'supervisor');
+    requestAnimationFrame(drawConnectors);
 }
 
 // Reset the pipeline visual order back to default (planner, designer, coder, devops, sequential).
 function resetPipelineOrder() {
     const cards = document.querySelectorAll('.agent-row .agent-card');
-    const arrows = document.querySelectorAll('.agent-row .flow-arrow');
     const defaults = { planner: 1, designer: 2, coder: 3, devops: 4 };
     cards.forEach(c => {
         c.classList.remove('parallel', 'skipped');
         c.style.order = '';
+        c.style.display = '';
         const badge = c.querySelector('.agent-step');
         const stage = c.dataset.agent;
         if (badge && defaults[stage]) badge.textContent = String(defaults[stage]);
     });
-    arrows.forEach(a => { a.style.display = ''; a.style.order = ''; a.classList.remove('parallel-arrow'); });
+    requestAnimationFrame(drawConnectors);
+}
+
+// ===== SIDEBAR NAV + SIMPLE MODALS =====
+function openModal(id) { const el = document.getElementById(id); if (el) el.hidden = false; }
+function closeModal(id) { const el = document.getElementById(id); if (el) el.hidden = true; }
+
+function renderHistory() {
+    const list = document.getElementById('history-list');
+    const empty = document.getElementById('history-empty');
+    if (!list) return;
+    const items = loadHistory();
+    list.innerHTML = '';
+    if (!items.length) { empty.hidden = false; return; }
+    empty.hidden = true;
+    items.forEach(it => {
+        const li = document.createElement('li');
+        li.className = 'history-item';
+        const desc = document.createElement('div');
+        desc.className = 'history-desc';
+        desc.textContent = it.desc;
+        const meta = document.createElement('div');
+        meta.className = 'history-meta';
+        meta.textContent = new Date(it.ts).toLocaleString();
+        li.append(desc, meta);
+        li.addEventListener('click', () => {
+            document.getElementById('project-desc').value = it.desc;
+            closeModal('history-modal');
+            log(`📋 Loaded a past project from history.`, 'info');
+        });
+        list.appendChild(li);
+    });
+}
+
+function wireSidebar() {
+    document.querySelectorAll('.sidebar [data-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.action;
+            if (action === 'settings') openSettings();
+            else if (action === 'check-apis') runApiCheck();
+            else if (action === 'history') { renderHistory(); openModal('history-modal'); }
+            else if (action === 'about') openModal('about-modal');
+            else if (action === 'license') openModal('license-modal');
+        });
+    });
+    // Close buttons & backdrops for the new modals
+    document.querySelectorAll('[data-close]').forEach(btn => {
+        btn.addEventListener('click', () => closeModal(btn.dataset.close));
+    });
+    ['history-modal','about-modal','license-modal'].forEach(id => {
+        const m = document.getElementById(id);
+        if (!m) return;
+        m.addEventListener('click', e => { if (e.target === m) closeModal(id); });
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape') return;
+        ['history-modal','about-modal','license-modal'].forEach(id => {
+            const m = document.getElementById(id); if (m && !m.hidden) closeModal(id);
+        });
+    });
+    // Clear history
+    const clearBtn = document.getElementById('history-clear');
+    if (clearBtn) clearBtn.addEventListener('click', () => {
+        if (!confirm('Clear all pipeline history from this browser?')) return;
+        localStorage.removeItem(HISTORY_STORAGE);
+        renderHistory();
+        refreshStats();
+        log('🗑 History cleared.', 'info');
+    });
+}
+
+// Live char counter for project description
+function wireCharCounter() {
+    const ta = document.getElementById('project-desc');
+    const counter = document.getElementById('char-counter');
+    if (!ta || !counter) return;
+    const update = () => { counter.textContent = `${ta.value.length} / 8000`; };
+    ta.addEventListener('input', update);
+    update();
 }
 
 function setProgress(id, pct) {
@@ -281,6 +376,8 @@ async function runPipeline() {
 
     isRunning = true;
     resetAll();
+    addHistory(desc);
+    refreshStats();
     const btnRun = document.getElementById('btn-run');
     btnRun.classList.add('running');
     btnRun.querySelector('span').textContent = 'Running...';
@@ -419,6 +516,89 @@ async function runApiCheck() {
     }
 }
 
+// ===== STATS + HISTORY =====
+const RUNS_STORAGE = 'nebulux.runs.v1';
+const HISTORY_STORAGE = 'nebulux.history.v1';
+const HISTORY_LIMIT = 25;
+
+function getRunCount() {
+    return Number(localStorage.getItem(RUNS_STORAGE) || 0);
+}
+function bumpRunCount() {
+    const n = getRunCount() + 1;
+    localStorage.setItem(RUNS_STORAGE, String(n));
+    return n;
+}
+function loadHistory() {
+    try { return JSON.parse(localStorage.getItem(HISTORY_STORAGE) || '[]') || []; } catch { return []; }
+}
+function saveHistory(list) { localStorage.setItem(HISTORY_STORAGE, JSON.stringify(list.slice(0, HISTORY_LIMIT))); }
+function addHistory(desc) {
+    const list = loadHistory();
+    list.unshift({ desc, ts: Date.now() });
+    saveHistory(list);
+}
+
+function refreshStats() {
+    document.getElementById('stat-runs').textContent = String(getRunCount());
+    const k = loadKeys();
+    const customs = loadCustomModels();
+    let count = 0;
+    if (k.anthropic) count++;
+    if (k.gemini) count++;
+    if (k.kimi || k.kimiUrl) count++;
+    if (k.ollamaUrl) count++;
+    count += customs.length;
+    document.getElementById('stat-models').textContent = String(count);
+    const sub = document.getElementById('stat-models-sub');
+    if (sub) sub.textContent = count === 0 ? 'Add keys in Settings →' : (customs.length ? `${customs.length} custom · ${count - customs.length} provider` : `${count} provider${count === 1 ? '' : 's'}`);
+    // History badge
+    const badge = document.getElementById('history-count');
+    const h = loadHistory().length;
+    if (badge) {
+        if (h > 0) { badge.hidden = false; badge.textContent = String(h); }
+        else { badge.hidden = true; }
+    }
+}
+
+// ===== SVG CONNECTORS (input card → agent cards) =====
+function drawConnectors() {
+    const svg = document.getElementById('pipeline-connectors');
+    if (!svg) return;
+    const section = svg.parentElement;
+    const cards = Array.from(document.querySelectorAll('.agent-row .agent-card')).filter(c => c.style.display !== 'none');
+    if (!cards.length) { svg.innerHTML = ''; return; }
+    const sectionRect = section.getBoundingClientRect();
+    svg.setAttribute('viewBox', `0 0 ${sectionRect.width} 46`);
+    svg.style.width = sectionRect.width + 'px';
+    const trunkY = 22;
+    const branchY = 46;
+    // Sort cards by their visual order
+    const positions = cards
+        .map(c => {
+            const r = c.getBoundingClientRect();
+            return { x: r.left - sectionRect.left + r.width / 2, card: c };
+        })
+        .sort((a, b) => a.x - b.x);
+    if (!positions.length) { svg.innerHTML = ''; return; }
+    const minX = positions[0].x;
+    const maxX = positions[positions.length - 1].x;
+    const midX = sectionRect.width / 2;
+    let parts = [];
+    // Vertical from input center down to trunk
+    parts.push(`<path d="M ${midX} 0 V ${trunkY}" />`);
+    // Trunk horizontal line
+    parts.push(`<path d="M ${minX} ${trunkY} H ${maxX}" />`);
+    // Branches down to each card
+    for (const p of positions) {
+        parts.push(`<path d="M ${p.x} ${trunkY} V ${branchY}" />`);
+        parts.push(`<circle cx="${p.x}" cy="${trunkY}" r="2.5" />`);
+    }
+    // Center junction dot
+    parts.push(`<circle cx="${midX}" cy="${trunkY}" r="3" />`);
+    svg.innerHTML = parts.join('');
+}
+
 // ===== CUSTOM MODELS (OpenAI-compatible) =====
 const CUSTOM_MODELS_STORAGE = 'nebulux.customModels.v1';
 
@@ -493,6 +673,7 @@ function renderCustomModelsList() {
             deleteCustomModel(m.id);
             renderCustomModelsList();
             refreshModelDropdowns();
+            refreshStats();
             log(`🗑 Custom model "${m.name}" removed.`, 'info');
         });
         actions.append(editBtn, delBtn);
@@ -643,6 +824,7 @@ function wireSettingsModal() {
         saveKeysObj(next);
         updateSettingsSummary();
         gateRunButton();
+        refreshStats();
         log('🔑 API keys saved to your browser.', 'success');
         closeSettings();
     });
@@ -652,6 +834,7 @@ function wireSettingsModal() {
         clearKeysStorage();
         populateSettingsForm();
         gateRunButton();
+        refreshStats();
         log('🗑 API keys cleared from this browser.', 'info');
     });
 
@@ -677,6 +860,7 @@ function wireSettingsModal() {
         upsertCustomModel(model);
         renderCustomModelsList();
         refreshModelDropdowns();
+        refreshStats();
         closeCustomForm();
         log(`⚡ Custom model "${model.name}" saved.`, 'success');
     });
@@ -754,9 +938,20 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
 refreshModelDropdowns();
 loadModelSelections();
 wireSettingsModal();
+wireSidebar();
+wireCharCounter();
 gateRunButton();
+refreshStats();
 renderDetail('supervisor');
 connectWS();
+
+// Initial connector draw + redraw on resize
+requestAnimationFrame(drawConnectors);
+let _resizeT;
+window.addEventListener('resize', () => {
+    clearTimeout(_resizeT);
+    _resizeT = setTimeout(drawConnectors, 80);
+});
 
 // First-visit onboarding: force settings modal if no keys saved
 if (!hasAnyKey()) {
