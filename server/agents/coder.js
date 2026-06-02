@@ -23,10 +23,12 @@ class CoderAgent {
 Output ONLY the raw JavaScript code, no explanations.`);
         results.files.push({ path: 'backend/server.js', content: serverCode });
 
-        const endpoints = plan.apiEndpoints || [];
+        const endpoints = Array.isArray(plan.apiEndpoints) ? plan.apiEndpoints : [];
         const groups = {};
         endpoints.forEach(ep => {
-            const resource = ep.path.split('/')[2] || 'main';
+            if (!ep || typeof ep !== 'object') return;
+            const epPath = typeof ep.path === 'string' ? ep.path : '';
+            const resource = epPath.split('/')[2] || 'main';
             if (!groups[resource]) groups[resource] = [];
             groups[resource].push(ep);
         });

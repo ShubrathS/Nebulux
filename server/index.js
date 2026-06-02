@@ -86,7 +86,7 @@ function broadcast(data) {
 // Create orchestrator
 const KIMI_URL = process.env.KIMI_URL || 'http://localhost:8000';
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'gemma4:latest';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'gemma3:latest';
 const orchestrator = new Orchestrator({
     anthropicKey: process.env.ANTHROPIC_API_KEY,
     geminiKey: process.env.GEMINI_API_KEY,
@@ -117,7 +117,11 @@ function extractClientKeys(req) {
     };
 }
 
-// Sanitize/validate custom-model definitions from the client
+// Sanitize/validate custom-model definitions from the client.
+// SECURITY: custom models let a caller make THIS server issue HTTP requests to an
+// arbitrary baseUrl. That is intentional (local BYOK endpoints such as Ollama/NIM
+// live on localhost/private IPs), but it is an SSRF surface. Do NOT expose this
+// server to untrusted networks — keep it bound to localhost or behind auth.
 function sanitizeCustomModels(input) {
     if (!Array.isArray(input)) return [];
     return input

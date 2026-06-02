@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nebulux ✧ — Multi-Agent Orchestrator</title>
-    <meta name="description" content="Real multi-agent workflow orchestrator using Claude, Gemini, Kimi K2.6, and Gemma 4.">
+    <meta name="description" content="Real multi-agent workflow orchestrator using Claude, Gemini, Kimi K2.6, and Gemma 3.">
     <meta name="author" content="Shubrath Shakyavanshi">
     <meta name="copyright" content="© 2026 Shubrath Shakyavanshi — All Rights Reserved">
 
@@ -134,7 +134,7 @@
                             <option value="claude">🧠 Claude</option>
                             <option value="gemini">💎 Gemini</option>
                             <option value="kimi">🌙 Kimi K2.6</option>
-                            <option value="gemma">🔧 Gemma 4</option>
+                            <option value="gemma">🔧 Gemma 3</option>
                         </select>
                         <div class="agent-progress"><div class="progress-bar" id="progress-supervisor"></div></div>
                         <div class="agent-status" id="status-supervisor">Idle</div>
@@ -149,7 +149,7 @@
                             <option value="claude">🧠 Claude</option>
                             <option value="gemini">💎 Gemini</option>
                             <option value="kimi">🌙 Kimi K2.6</option>
-                            <option value="gemma">🔧 Gemma 4</option>
+                            <option value="gemma">🔧 Gemma 3</option>
                         </select>
                         <div class="agent-progress"><div class="progress-bar" id="progress-planner"></div></div>
                         <div class="agent-status" id="status-planner">Waiting</div>
@@ -164,7 +164,7 @@
                             <option value="claude">🧠 Claude</option>
                             <option value="gemini">💎 Gemini</option>
                             <option value="kimi">🌙 Kimi K2.6</option>
-                            <option value="gemma">🔧 Gemma 4</option>
+                            <option value="gemma">🔧 Gemma 3</option>
                         </select>
                         <div class="agent-progress"><div class="progress-bar" id="progress-designer"></div></div>
                         <div class="agent-status" id="status-designer">Waiting</div>
@@ -179,7 +179,7 @@
                             <option value="claude">🧠 Claude</option>
                             <option value="gemini">💎 Gemini</option>
                             <option value="kimi">🌙 Kimi K2.6</option>
-                            <option value="gemma">🔧 Gemma 4</option>
+                            <option value="gemma">🔧 Gemma 3</option>
                         </select>
                         <div class="agent-progress"><div class="progress-bar" id="progress-coder"></div></div>
                         <div class="agent-status" id="status-coder">Waiting</div>
@@ -194,7 +194,7 @@
                             <option value="claude">🧠 Claude</option>
                             <option value="gemini">💎 Gemini</option>
                             <option value="kimi">🌙 Kimi K2.6</option>
-                            <option value="gemma">🔧 Gemma 4</option>
+                            <option value="gemma">🔧 Gemma 3</option>
                         </select>
                         <div class="agent-progress"><div class="progress-bar" id="progress-devops"></div></div>
                         <div class="agent-status" id="status-devops">Idle</div>
@@ -258,7 +258,7 @@
                     <li class="api-row" data-provider="ollama">
                         <span class="api-dot pending"></span>
                         <div class="api-info">
-                            <div class="api-name">🔧 Gemma 4 <span class="api-sub">Ollama (local)</span></div>
+                            <div class="api-name">🔧 Gemma 3 <span class="api-sub">Ollama (local)</span></div>
                             <div class="api-msg">Waiting…</div>
                         </div>
                         <span class="api-latency"></span>
@@ -315,15 +315,15 @@
                 </div>
 
                 <div class="key-row">
-                    <label class="key-label" for="key-ollama-url">🔧 Gemma 4 — Ollama URL</label>
+                    <label class="key-label" for="key-ollama-url">🔧 Gemma 3 — Ollama URL</label>
                     <input type="text" class="key-input" id="key-ollama-url" placeholder="http://localhost:11434" autocomplete="off" spellcheck="false">
                 </div>
                 <div class="key-row">
-                    <label class="key-label" for="key-ollama-model">🔧 Gemma 4 — model name</label>
-                    <input type="text" class="key-input" id="key-ollama-model" placeholder="gemma4:latest" autocomplete="off" spellcheck="false">
+                    <label class="key-label" for="key-ollama-model">🔧 Gemma 3 — model name</label>
+                    <input type="text" class="key-input" id="key-ollama-model" placeholder="gemma3:latest" autocomplete="off" spellcheck="false">
                 </div>
                 <div class="key-note key-warn">
-                    ⚠️ <b>Gemma 4 runs locally via Ollama.</b> If you're using Nebulux from a hosted/remote server, that server cannot reach <code>localhost:11434</code> on your machine. To use Gemma 4 in hosted mode, expose your local Ollama via a tunnel (e.g. <code>ngrok</code>) and paste the public URL above. Otherwise, pick a different model for each stage.
+                    ⚠️ <b>Gemma 3 runs locally via Ollama.</b> If you're using Nebulux from a hosted/remote server, that server cannot reach <code>localhost:11434</code> on your machine. To use Gemma 3 in hosted mode, expose your local Ollama via a tunnel (e.g. <code>ngrok</code>) and paste the public URL above. Otherwise, pick a different model for each stage.
                 </div>
 
                 <div class="custom-models-section">
@@ -407,7 +407,7 @@
                 <ol>
                     <li><strong>Planner</strong> reads your description and emits an implementation plan (tech stack, file structure, API contract, design requirements).</li>
                     <li>The Planner also decides the <strong>execution order</strong> — backend-first, frontend-first, parallel, or skip stages your project doesn't need.</li>
-                    <li><strong>Designer</strong> &amp; <strong>Coder</strong> run in that order. Each can use any model you pick (Claude, Gemini, Kimi K2.6, Gemma 4, or any custom OpenAI-compatible endpoint).</li>
+                    <li><strong>Designer</strong> &amp; <strong>Coder</strong> run in that order. Each can use any model you pick (Claude, Gemini, Kimi K2.6, Gemma 3, or any custom OpenAI-compatible endpoint).</li>
                     <li><strong>Supervisor</strong> validates every handoff. <strong>DevOps</strong> writes tests, Docker config, and README at the end.</li>
                 </ol>
                 <h3>Privacy</h3>

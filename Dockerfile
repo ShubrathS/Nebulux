@@ -14,7 +14,7 @@ WORKDIR /app
 # App code (frontend at /app, backend at /app/server)
 COPY server/ ./server/
 COPY --from=deps /app/server/node_modules ./server/node_modules
-COPY index.html style.css script.js ./
+COPY index.html style.css script.js nebulux_logo.png ./
 
 # Drop privileges
 RUN addgroup -S nebulux && adduser -S nebulux -G nebulux \

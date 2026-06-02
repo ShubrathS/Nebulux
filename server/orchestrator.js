@@ -80,7 +80,7 @@ class Orchestrator {
 
     async run(projectDesc, modelOverrides, clientKeys, customModels) {
         const models = this.resolveModels(modelOverrides);
-        const state = { status: 'running', currentAgent: null, plan: null, outputs: {}, models };
+        const state = { status: 'running', currentAgent: null, plan: null, outputs: {}, reviews: {}, models };
         // Per-run router: client keys override defaults; custom models attached as-is
         const router = this.buildRouter(clientKeys, customModels);
 
@@ -116,6 +116,7 @@ class Orchestrator {
             setProgress('planner', 100);
 
             const planReview = await supervisor.validate('Planner', plan, plan, log);
+            state.reviews.planner = planReview;
             setAgent('planner', planReview.approved ? 'done' : 'error');
             if (!planReview.approved) log('❌ Plan rejected by Supervisor', 'error');
 
@@ -142,23 +143,30 @@ class Orchestrator {
             const stageNames = { designer: 'Designer', coder: 'Coder' };
 
             const runStage = async (stage) => {
-                setAgent(stage, 'active');
-                setProgress(stage, 10);
-                const agent = stageMap[stage];
-                const designIn = stage === 'coder' ? state.outputs.designer : undefined;
-                const out = stage === 'coder'
-                    ? await agent.execute(plan, designIn, msg => {
+                try {
+                    setAgent(stage, 'active');
+                    // Steady ramp toward 90% — advances on each agent log line.
+                    let pct = 10;
+                    setProgress(stage, pct);
+                    const onStageLog = msg => {
                         log(`${stageIcons[stage]} ${msg}`);
-                        setProgress(stage, Math.min(90, parseInt(msg.match(/\d+/) || 50)));
-                    })
-                    : await agent.execute(plan, msg => {
-                        log(`${stageIcons[stage]} ${msg}`);
-                        setProgress(stage, Math.min(90, parseInt(msg.match(/\d+/) || 50)));
-                    });
-                state.outputs[stage] = out;
-                setProgress(stage, 100);
-                const review = await supervisor.validate(stageNames[stage], out, plan, log);
-                setAgent(stage, review.approved ? 'done' : 'error');
+                        pct = Math.min(90, pct + 12);
+                        setProgress(stage, pct);
+                    };
+                    const agent = stageMap[stage];
+                    const out = stage === 'coder'
+                        ? await agent.execute(plan, state.outputs.designer, onStageLog)
+                        : await agent.execute(plan, onStageLog);
+                    state.outputs[stage] = out;
+                    setProgress(stage, 100);
+                    const review = await supervisor.validate(stageNames[stage], out, plan, log);
+                    state.reviews[stage] = review;
+                    setAgent(stage, review.approved ? 'done' : 'error');
+                } catch (err) {
+                    // Attribute the failure to THIS stage (important in parallel mode)
+                    setAgent(stage, 'error');
+                    throw err;
+                }
             };
 
             if (pipeline.parallel && pipeline.order.length > 1) {
@@ -174,15 +182,18 @@ class Orchestrator {
 
             // === STAGE 4: DEVOPS (always last) ===
             setAgent('devops', 'active');
-            setProgress('devops', 10);
+            let devopsPct = 10;
+            setProgress('devops', devopsPct);
             const devopsOutput = await devops.execute(plan, state.outputs.designer, state.outputs.coder, msg => {
                 log(`🚀 ${msg}`);
-                setProgress('devops', Math.min(90, parseInt(msg.match(/\d+/) || 50)));
+                devopsPct = Math.min(90, devopsPct + 10);
+                setProgress('devops', devopsPct);
             });
             state.outputs.devops = devopsOutput;
             setProgress('devops', 100);
 
             const devopsReview = await supervisor.validate('DevOps', devopsOutput, plan, log);
+            state.reviews.devops = devopsReview;
             setAgent('devops', devopsReview.approved ? 'done' : 'error');
 
             // === FINAL ===
@@ -190,7 +201,7 @@ class Orchestrator {
             const safeName = Orchestrator.sanitizeProjectName(plan.projectName);
             const projectDir = path.join(this.outputDir, safeName);
             try {
-                await this.saveFiles(projectDir, state.outputs, plan);
+                await this.saveFiles(projectDir, state.outputs, plan, state.reviews);
             } catch (e) {
                 log(`⚠️ File save failed: ${e.message}`, 'error');
                 this.broadcast({ type: 'log', msg: `⚠️ File save failed: ${e.message}`, logType: 'error' });
@@ -207,7 +218,7 @@ class Orchestrator {
             return state;
         } catch (error) {
             state.status = 'failed';
-            const friendly = this.formatError(error);
+            const friendly = this.formatError(error, router);
             state.error = friendly;
             log(`❌ Pipeline failed: ${friendly}`, 'error');
             setAgent(state.currentAgent, 'error');
@@ -216,21 +227,25 @@ class Orchestrator {
         }
     }
 
-    formatError(err) {
+    formatError(err, router) {
+        const r = router || this.router;
         const m = err?.message || String(err);
         // Quota / rate limit hint
         if (err?.status === 429 || /quota|rate.?limit|RESOURCE_EXHAUSTED/i.test(m)) {
             const retry = m.match(/retry in (\d+(?:\.\d+)?)s/i);
             const tail = retry ? ` (retry in ~${Math.round(parseFloat(retry[1]))}s)` : '';
-            return `${err.provider ? `[${this.router.label(err.provider)}] ` : ''}Quota / rate-limit exceeded${tail}. Try a different model or wait.`;
+            return `${err.provider ? `[${r.label(err.provider)}] ` : ''}Quota / rate-limit exceeded${tail}. Try a different model or wait.`;
         }
         return m.length > 220 ? m.slice(0, 220) + '…' : m;
     }
 
-    async saveFiles(projectDir, outputs, plan) {
+    async saveFiles(projectDir, outputs, plan, reviews) {
         fs.mkdirSync(projectDir, { recursive: true });
         const baseDir = path.resolve(projectDir);
         fs.writeFileSync(path.join(baseDir, 'plan.json'), JSON.stringify(plan, null, 2));
+        if (reviews && Object.keys(reviews).length) {
+            fs.writeFileSync(path.join(baseDir, 'reviews.json'), JSON.stringify(reviews, null, 2));
+        }
         let skipped = 0;
         for (const [, output] of Object.entries(outputs)) {
             if (!output?.files) continue;

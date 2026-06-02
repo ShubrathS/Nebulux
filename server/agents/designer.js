@@ -24,11 +24,16 @@ class DesignerAgent {
         }
 
         // Step 2: Frontend code
-        const pages = plan.designRequirements?.pages || ['index'];
+        const rawPages = Array.isArray(plan.designRequirements?.pages)
+            ? plan.designRequirements.pages.filter(p => typeof p === 'string' && p.trim())
+            : [];
+        const pages = rawPages.length ? rawPages : ['index'];
         for (const page of pages) {
             onLog(`${label}: Building ${page} page...`);
             const html = await this.generate(plan, page, designConcept, 'html');
-            results.files.push({ path: `frontend/${page}.html`, content: html });
+            // Sanitize the page name into a safe, flat filename
+            const safe = String(page).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64) || 'page';
+            results.files.push({ path: `frontend/${safe}.html`, content: html });
         }
 
         onLog(`${label}: Generating stylesheet...`);

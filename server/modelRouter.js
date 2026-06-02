@@ -11,7 +11,7 @@ class ModelRouter {
         this.kimiUrl = (config.kimiUrl || 'http://localhost:8000').replace(/\/+$/, '');
         this.kimiKey = config.kimiKey;
         this.ollamaUrl = (config.ollamaUrl || 'http://localhost:11434').replace(/\/+$/, '');
-        this.ollamaModel = config.ollamaModel || 'gemma4:latest';
+        this.ollamaModel = config.ollamaModel || 'gemma3:latest';
         // Custom OpenAI-compatible models, keyed by id: { id, name, baseUrl, model, apiKey }
         this.customModels = new Map();
         if (Array.isArray(config.customModels)) {
@@ -46,11 +46,16 @@ class ModelRouter {
             const m = this.customModels?.get(model.slice('custom:'.length));
             return m ? `⚡ ${m.name}` : '⚡ Custom (unknown)';
         }
-        return { claude: 'Claude', gemini: 'Gemini', kimi: 'Kimi K2.6', gemma: 'Gemma 4' }[model] || model;
+        return { claude: 'Claude', gemini: 'Gemini', kimi: 'Kimi K2.6', gemma: 'Gemma 3' }[model] || model;
     }
 
+    // Peel a single fence ONLY when the whole response is wrapped in one
+    // ```lang ... ``` block. Never strips fences globally, so markdown/README
+    // output that legitimately contains code blocks is left intact.
     stripFences(text) {
-        return (text || '').replace(/^```[\w]*\n?/gm, '').replace(/```$/gm, '').trim();
+        const t = (text || '').trim();
+        const wrapped = t.match(/^```[^\n]*\n([\s\S]*?)\n?```$/);
+        return wrapped ? wrapped[1].trim() : t;
     }
 
     async chat(model, { system, prompt, maxTokens = 4000 }) {

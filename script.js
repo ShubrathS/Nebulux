@@ -16,7 +16,7 @@ const AGENTS = {
 const PIPELINE = ['planner','designer','coder','devops'];
 const STAGES = ['supervisor', ...PIPELINE];
 const MODEL_DEFAULTS = { planner:'claude', designer:'kimi', coder:'gemma', devops:'claude', supervisor:'claude' };
-const MODEL_LABELS = { claude:'🧠 Claude', gemini:'💎 Gemini', kimi:'🌙 Kimi K2.6', gemma:'🔧 Gemma 4' };
+const MODEL_LABELS = { claude:'🧠 Claude', gemini:'💎 Gemini', kimi:'🌙 Kimi K2.6', gemma:'🔧 Gemma 3' };
 let selectedAgent = 'supervisor';
 let isRunning = false;
 let ws = null;
@@ -29,8 +29,8 @@ const detailBadge = document.getElementById('detail-badge');
 const connDot = document.getElementById('conn-dot');
 
 // ===== WEBSOCKET =====
-const API_BASE = location.protocol === 'file:' ? 'http://localhost:3001' : '';
-const WS_BASE = location.protocol === 'file:' ? 'ws://localhost:3001' : (location.protocol === 'https:' ? 'wss://' + location.host : 'ws://' + location.host);
+const API_BASE = location.protocol === 'file:' ? 'http://localhost:3000' : '';
+const WS_BASE = location.protocol === 'file:' ? 'ws://localhost:3000' : (location.protocol === 'https:' ? 'wss://' + location.host : 'ws://' + location.host);
 
 let wsReconnectAttempt = 0;
 const WS_MAX_BACKOFF = 30000; // 30s cap
@@ -234,6 +234,12 @@ function resetPipelineOrder() {
         const badge = c.querySelector('.agent-step');
         const stage = c.dataset.agent;
         if (badge && defaults[stage]) badge.textContent = String(defaults[stage]);
+    });
+    // Restore any arrows hidden/reordered by a previous skipped or parallel run
+    document.querySelectorAll('.agent-row .flow-arrow').forEach(a => {
+        a.style.display = '';
+        a.style.order = '';
+        a.classList.remove('parallel-arrow');
     });
     requestAnimationFrame(drawConnectors);
 }
@@ -741,7 +747,9 @@ function saveKeysObj(obj) { localStorage.setItem(KEYS_STORAGE, JSON.stringify(ob
 function clearKeysStorage() { localStorage.removeItem(KEYS_STORAGE); }
 function hasAnyKey() {
     const k = loadKeys();
-    return !!(k.anthropic || k.gemini || k.kimi || k.ollamaUrl);
+    // A local Kimi NIM or Ollama needs only a URL (no auth key), so a configured
+    // URL alone counts as a usable provider. Custom models count too.
+    return !!(k.anthropic || k.gemini || k.kimi || k.kimiUrl || k.ollamaUrl || loadCustomModels().length);
 }
 
 function getKeyHeaders() {
