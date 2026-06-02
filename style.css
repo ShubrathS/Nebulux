@@ -296,6 +296,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:#050510;color:#c8d6e5;m
 }
 .project-textarea:focus{border-color:rgba(168,85,247,0.5);background:rgba(8,6,18,0.85);box-shadow:0 0 0 3px rgba(168,85,247,0.12)}
 .project-textarea::placeholder{color:#3f3f5a}
+.project-input-actions{display:flex;justify-content:flex-end;margin-top:14px}
+.btn-build{padding:11px 30px;font-size:0.92rem;border-radius:10px;letter-spacing:0.02em}
 
 /* Pipeline section */
 .pipeline-section{position:relative;padding-top:6px}

@@ -82,7 +82,8 @@
                 </div>
                 <div class="top-bar-right">
                     <button class="btn btn-reset" id="btn-reset" title="Reset pipeline">↻ Reset</button>
-                    <button class="btn btn-run" id="btn-run" title="Execute the multi-agent pipeline">
+                    <button class="btn btn-run" id="btn-run" title="Execute the multi-agent pipeline"
+                        data-idle-label="Run Pipeline" data-running-label="Running...">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
                         <span>Run Pipeline</span>
                     </button>
@@ -118,6 +119,13 @@
                     <textarea id="project-desc" class="project-textarea" rows="3"
                         placeholder="Define the scope, goals, and core features of your project here..."
                         maxlength="8000"></textarea>
+                    <div class="project-input-actions">
+                        <button class="btn btn-run btn-build" id="btn-build"
+                            title="Build your project with the multi-agent pipeline"
+                            data-idle-label="⚡ Build Project" data-running-label="Building...">
+                            <span>⚡ Build Project</span>
+                        </button>
+                    </div>
                 </div>
             </section>
 

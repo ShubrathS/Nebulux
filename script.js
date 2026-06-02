@@ -20,6 +20,9 @@ const MODEL_LABELS = { claude:'🧠 Claude', gemini:'💎 Gemini', kimi:'🌙 Ki
 let selectedAgent = 'supervisor';
 let isRunning = false;
 let ws = null;
+// True when the server itself has provider keys configured (.env fallback), so the
+// pipeline can run even if the browser has no BYOK keys saved. Populated on init.
+let serverHasKeys = false;
 
 // ===== DOM =====
 const logBody = document.getElementById('log-body');
@@ -111,18 +114,14 @@ function handleServerMessage(data) {
             break;
         case 'complete':
             isRunning = false;
-            const btnRun = document.getElementById('btn-run');
-            btnRun.classList.remove('running');
-            btnRun.querySelector('span').textContent = 'Run Pipeline';
+            setRunningState(false);
             bumpRunCount();
             refreshStats();
             log('✨ Pipeline complete! Check the /output folder for generated files.', 'success');
             break;
         case 'error':
             isRunning = false;
-            const btn = document.getElementById('btn-run');
-            btn.classList.remove('running');
-            btn.querySelector('span').textContent = 'Run Pipeline';
+            setRunningState(false);
             const provider = data.provider ? ` (${getModelLabel(data.provider)})` : '';
             log(`❌ Error${provider}: ${data.error}`, 'error');
             if (data.status === 429) {
@@ -370,6 +369,17 @@ function resetAll() {
 }
 
 // ===== RUN PIPELINE =====
+// Keep every run trigger in sync (top-bar "Run Pipeline" + below-prompt "Build").
+function setRunningState(on) {
+    document.querySelectorAll('#btn-run, #btn-build').forEach(b => {
+        b.classList.toggle('running', on);
+        const span = b.querySelector('span');
+        if (span) span.textContent = on
+            ? (b.dataset.runningLabel || 'Running...')
+            : (b.dataset.idleLabel || 'Run Pipeline');
+    });
+}
+
 async function runPipeline() {
     if (isRunning) return;
     if (!hasAnyKey()) {
@@ -384,9 +394,7 @@ async function runPipeline() {
     resetAll();
     addHistory(desc);
     refreshStats();
-    const btnRun = document.getElementById('btn-run');
-    btnRun.classList.add('running');
-    btnRun.querySelector('span').textContent = 'Running...';
+    setRunningState(true);
     log(`🚀 Starting pipeline for: "${desc.slice(0, 80)}..."`, 'supervisor');
 
     try {
@@ -400,12 +408,11 @@ async function runPipeline() {
             body: JSON.stringify({ projectDescription: desc, models, customModels: loadCustomModels() })
         });
         const data = await res.json();
-        if (data.error) { log('❌ ' + data.error, 'error'); isRunning = false; btnRun.classList.remove('running'); btnRun.querySelector('span').textContent = 'Run Pipeline'; }
+        if (data.error) { log('❌ ' + data.error, 'error'); isRunning = false; setRunningState(false); }
     } catch (e) {
         log('❌ Failed to connect to server. Is it running?', 'error');
         isRunning = false;
-        btnRun.classList.remove('running');
-        btnRun.querySelector('span').textContent = 'Run Pipeline';
+        setRunningState(false);
     }
 }
 
@@ -748,8 +755,20 @@ function clearKeysStorage() { localStorage.removeItem(KEYS_STORAGE); }
 function hasAnyKey() {
     const k = loadKeys();
     // A local Kimi NIM or Ollama needs only a URL (no auth key), so a configured
-    // URL alone counts as a usable provider. Custom models count too.
-    return !!(k.anthropic || k.gemini || k.kimi || k.kimiUrl || k.ollamaUrl || loadCustomModels().length);
+    // URL alone counts as a usable provider. Custom models count too. Server-side
+    // .env keys also count — the pipeline falls back to them when no BYOK keys exist.
+    return !!(k.anthropic || k.gemini || k.kimi || k.kimiUrl || k.ollamaUrl || loadCustomModels().length || serverHasKeys);
+}
+
+// Ask the server whether it has any provider key configured via .env, so a locally
+// run instance with keys in .env enables the Build/Run buttons without forcing BYOK.
+async function refreshServerKeys() {
+    try {
+        const r = await fetch(`${API_BASE}/api/health`);
+        const d = await r.json();
+        serverHasKeys = !!(d.apis && (d.apis.claude || d.apis.gemini || d.apis.kimi));
+    } catch { serverHasKeys = false; }
+    gateRunButton();
 }
 
 function getKeyHeaders() {
@@ -812,20 +831,22 @@ function closeSettings() {
 }
 
 function gateRunButton() {
-    const btn = document.getElementById('btn-run');
     // The sidebar Settings nav item pulses red when keys are missing
     const settingsNav = document.querySelector('.sidebar [data-action="settings"]');
-    if (hasAnyKey()) {
-        btn.classList.remove('disabled');
-        btn.removeAttribute('disabled');
-        btn.title = 'Run the multi-agent pipeline';
-        if (settingsNav) settingsNav.classList.remove('needs-keys');
-    } else {
-        btn.classList.add('disabled');
-        btn.setAttribute('disabled', 'disabled');
-        btn.title = 'Add API keys in Settings first';
-        if (settingsNav) settingsNav.classList.add('needs-keys');
-    }
+    const enabled = hasAnyKey();
+    document.querySelectorAll('#btn-run, #btn-build').forEach(btn => {
+        btn.classList.toggle('disabled', !enabled);
+        if (enabled) {
+            btn.removeAttribute('disabled');
+            btn.title = btn.id === 'btn-build'
+                ? 'Build your project with the multi-agent pipeline'
+                : 'Run the multi-agent pipeline';
+        } else {
+            btn.setAttribute('disabled', 'disabled');
+            btn.title = 'Add API keys in Settings first';
+        }
+    });
+    if (settingsNav) settingsNav.classList.toggle('needs-keys', !enabled);
 }
 
 function wireSettingsModal() {
@@ -937,6 +958,8 @@ document.querySelectorAll('.model-select').forEach(sel => {
 // ===== EVENTS =====
 document.querySelectorAll('.agent-card').forEach(c => c.addEventListener('click', () => renderDetail(c.dataset.agent)));
 document.getElementById('btn-run').addEventListener('click', runPipeline);
+const _btnBuild = document.getElementById('btn-build');
+if (_btnBuild) _btnBuild.addEventListener('click', runPipeline);
 document.getElementById('btn-reset').addEventListener('click', resetAll);
 document.getElementById('btn-clear-log').addEventListener('click', () => { logBody.innerHTML = ''; });
 document.getElementById('api-modal-close').addEventListener('click', closeApiModal);
@@ -966,10 +989,13 @@ window.addEventListener('resize', () => {
     _resizeT = setTimeout(drawConnectors, 80);
 });
 
-// First-visit onboarding: force settings modal if no keys saved
-if (!hasAnyKey()) {
-    setTimeout(() => {
+// Check server .env keys, then re-gate buttons and decide onboarding.
+// If neither the browser nor the server has any key, prompt for BYOK setup.
+refreshServerKeys().then(() => {
+    if (!hasAnyKey()) {
         openSettings();
         log('👋 Welcome to Nebulux. Add your API keys to get started.', 'info');
-    }, 400);
-}
+    } else if (serverHasKeys) {
+        log('🔑 Using API keys from the server\'s .env — ready to build.', 'info');
+    }
+});
