@@ -5,17 +5,19 @@ class DesignerAgent {
         this.name = 'Designer';
     }
 
-    async execute(plan, onLog) {
+    async execute(plan, onLog, guidance) {
         const results = { files: [] };
         const label = this.router.label(this.model);
+        // Prepended to every prompt during a Supervisor-requested revision pass.
+        this.guidance = guidance ? `REVISION REQUEST — fix this and output a complete, corrected result:\n${guidance}\n\n` : '';
 
         // Step 1: Design concept
-        onLog(`🎨 ${label}: Generating UI/UX design concepts...`);
+        onLog(`🎨 ${label}: ${guidance ? 'Revising design per Supervisor feedback...' : 'Generating UI/UX design concepts...'}`);
         let designConcept = '';
         try {
             designConcept = await this.router.chat(this.model, {
                 system: 'You are an expert UI/UX designer. Create detailed design specifications including layout, color palette, typography, component hierarchy, and user flow. Be specific about CSS values, spacing, and responsive breakpoints.',
-                prompt: `Design the UI/UX for this project:\n\nProject: ${plan.projectName}\nSummary: ${plan.summary}\nPages: ${JSON.stringify(plan.designRequirements?.pages)}\nComponents: ${JSON.stringify(plan.designRequirements?.components)}\nStyle: ${plan.designRequirements?.style || 'modern'}`,
+                prompt: `${this.guidance}Design the UI/UX for this project:\n\nProject: ${plan.projectName}\nSummary: ${plan.summary}\nPages: ${JSON.stringify(plan.designRequirements?.pages)}\nComponents: ${JSON.stringify(plan.designRequirements?.components)}\nStyle: ${plan.designRequirements?.style || 'modern'}`,
                 maxTokens: 4000
             });
             onLog(`${label}: Design concepts ready`);
@@ -54,7 +56,7 @@ class DesignerAgent {
             css: `Generate a complete, production-ready CSS stylesheet for this project. Style: ${plan.designRequirements?.colorScheme || 'dark theme with purple accents'}. ${designConcept ? 'Follow this design spec: ' + designConcept.slice(0, 2000) : ''}. Include responsive design, animations, modern aesthetics. Output ONLY the raw CSS code, no markdown.`,
             js: `Generate frontend JavaScript for this project. Handle DOM interactions, form submissions, API calls to the backend at /api/. Pages: ${JSON.stringify(plan.designRequirements?.pages)}. API endpoints: ${JSON.stringify(plan.apiEndpoints?.slice(0, 5))}. Output ONLY the raw JS code, no markdown.`
         };
-        const text = await this.router.chat(this.model, { prompt: prompts[fileType], maxTokens: 4000 });
+        const text = await this.router.chat(this.model, { prompt: (this.guidance || '') + prompts[fileType], maxTokens: 4000 });
         return this.router.stripFences(text);
     }
 }

@@ -182,6 +182,14 @@ app.get('/api/status', (req, res) => {
     res.json({ running: !!currentRun });
 });
 
+// Stop the in-progress pipeline (Stop button). Aborts in-flight provider calls
+// and halts the run at the next checkpoint.
+app.post('/api/stop', (req, res) => {
+    if (!currentRun) return res.status(409).json({ error: 'No pipeline is running' });
+    orchestrator.cancel();
+    res.json({ status: 'stopping' });
+});
+
 // Health check (key presence only)
 app.get('/api/health', (req, res) => {
     res.json({

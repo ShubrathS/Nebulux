@@ -5,8 +5,11 @@ class PlannerAgent {
         this.name = 'Planner';
     }
 
-    async execute(projectDesc, onLog) {
-        onLog(`Analyzing project requirements (using ${this.router.label(this.model)})...`);
+    async execute(projectDesc, onLog, guidance) {
+        onLog(guidance
+            ? `Revising plan based on Supervisor feedback (using ${this.router.label(this.model)})...`
+            : `Analyzing project requirements (using ${this.router.label(this.model)})...`);
+        const revisionNote = guidance ? `\n\nREVISION REQUEST — fix this and output a complete, corrected plan:\n${guidance}` : '';
 
         const text = await this.router.chat(this.model, {
             system: `You are an expert software architect and project planner. Your job is to create a comprehensive implementation plan for a software project. You must output ONLY valid JSON with this exact structure:
@@ -37,7 +40,7 @@ PIPELINE FIELD RULES — read carefully, this dictates execution:
 - "parallel": true only when both stages are independent and order doesn't matter — this halves wait time.
   Set parallel: false if one stage's output realistically informs the other.
 - "rationale" is a short sentence explaining the choice. Be specific to THIS project.`,
-            prompt: `Create a detailed implementation plan for this project:\n\n${projectDesc}`,
+            prompt: `Create a detailed implementation plan for this project:\n\n${projectDesc}${revisionNote}`,
             maxTokens: 8000
         });
 

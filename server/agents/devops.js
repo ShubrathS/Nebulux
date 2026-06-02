@@ -5,10 +5,13 @@ class DevOpsAgent {
         this.name = 'DevOps';
     }
 
-    async execute(plan, designOutput, coderOutput, onLog) {
+    async execute(plan, designOutput, coderOutput, onLog, guidance) {
         const results = { files: [], testResults: [] };
         const allFiles = [...(designOutput?.files || []), ...(coderOutput?.files || [])];
         const label = this.router.label(this.model);
+        // Prepended to every prompt during a Supervisor-requested revision pass.
+        this.guidance = guidance ? `REVISION REQUEST — fix this and output a complete, corrected result:\n${guidance}\n\n` : '';
+        if (guidance) onLog(`🚀 ${label}: Revising DevOps output per Supervisor feedback...`);
 
         // Tests
         onLog(`🧪 ${label}: Writing test files...`);
@@ -66,7 +69,7 @@ class DevOpsAgent {
     }
 
     async call(system, prompt) {
-        const text = await this.router.chat(this.model, { system, prompt, maxTokens: 6000 });
+        const text = await this.router.chat(this.model, { system, prompt: (this.guidance || '') + prompt, maxTokens: 6000 });
         return this.router.stripFences(text);
     }
 }

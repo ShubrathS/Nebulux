@@ -119,6 +119,11 @@ function handleServerMessage(data) {
             refreshStats();
             log('✨ Pipeline complete! Check the /output folder for generated files.', 'success');
             break;
+        case 'stopped':
+            isRunning = false;
+            setRunningState(false);
+            log('🛑 ' + (data.error || 'Pipeline stopped by user.'), 'info');
+            break;
         case 'error':
             isRunning = false;
             setRunningState(false);
@@ -369,7 +374,8 @@ function resetAll() {
 }
 
 // ===== RUN PIPELINE =====
-// Keep every run trigger in sync (top-bar "Run Pipeline" + below-prompt "Build").
+// Keep every run trigger in sync (top-bar "Run Pipeline" + below-prompt "Build")
+// and reveal/hide the Stop buttons while a pipeline is running.
 function setRunningState(on) {
     document.querySelectorAll('#btn-run, #btn-build').forEach(b => {
         b.classList.toggle('running', on);
@@ -378,6 +384,28 @@ function setRunningState(on) {
             ? (b.dataset.runningLabel || 'Running...')
             : (b.dataset.idleLabel || 'Run Pipeline');
     });
+    document.querySelectorAll('.js-stop').forEach(b => {
+        b.hidden = !on;
+        if (on) b.removeAttribute('disabled');
+    });
+}
+
+// Ask the server to stop the running pipeline.
+async function stopPipeline() {
+    if (!isRunning) return;
+    log('🛑 Stop requested — aborting current step and halting...', 'info');
+    document.querySelectorAll('.js-stop').forEach(b => b.setAttribute('disabled', 'disabled'));
+    try {
+        const res = await fetch(`${API_BASE}/api/stop`, { method: 'POST', headers: { ...getKeyHeaders() } });
+        if (!res.ok) {
+            const d = await res.json().catch(() => ({}));
+            log(`⚠️ Could not stop: ${d.error || res.status}`, 'error');
+            document.querySelectorAll('.js-stop').forEach(b => b.removeAttribute('disabled'));
+        }
+    } catch (e) {
+        log('⚠️ Could not reach server to stop the pipeline.', 'error');
+        document.querySelectorAll('.js-stop').forEach(b => b.removeAttribute('disabled'));
+    }
 }
 
 async function runPipeline() {
@@ -960,6 +988,7 @@ document.querySelectorAll('.agent-card').forEach(c => c.addEventListener('click'
 document.getElementById('btn-run').addEventListener('click', runPipeline);
 const _btnBuild = document.getElementById('btn-build');
 if (_btnBuild) _btnBuild.addEventListener('click', runPipeline);
+document.querySelectorAll('.js-stop').forEach(b => b.addEventListener('click', stopPipeline));
 document.getElementById('btn-reset').addEventListener('click', resetAll);
 document.getElementById('btn-clear-log').addEventListener('click', () => { logBody.innerHTML = ''; });
 document.getElementById('api-modal-close').addEventListener('click', closeApiModal);

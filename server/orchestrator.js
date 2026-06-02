@@ -30,6 +30,18 @@ class Orchestrator {
         this.broadcast = config.broadcast || (() => {});
         // Build a "default" router for cases where no client keys are given
         this.router = new ModelRouter(this.defaults);
+        // How many times the Supervisor may auto-revise a stage before the pipeline halts.
+        this.maxRevisions = Number.isFinite(config.maxRevisions) ? config.maxRevisions : 2;
+        // Cancellation state for the Stop button
+        this.cancelled = false;
+        this.abortController = null;
+    }
+
+    // Requested by POST /api/stop. Aborts in-flight provider requests and signals
+    // the run loop to halt at the next checkpoint.
+    cancel() {
+        this.cancelled = true;
+        if (this.abortController) { try { this.abortController.abort(); } catch { /* already aborted */ } }
     }
 
     buildRouter(clientKeys, customModels) {
@@ -84,6 +96,26 @@ class Orchestrator {
         // Per-run router: client keys override defaults; custom models attached as-is
         const router = this.buildRouter(clientKeys, customModels);
 
+        // Fresh cancellation context for this run; the signal aborts provider calls.
+        this.cancelled = false;
+        this.abortController = new AbortController();
+        router.signal = this.abortController.signal;
+        const MAX_REVISIONS = this.maxRevisions;
+        const ensureNotCancelled = () => {
+            if (this.cancelled) {
+                const e = new Error('Pipeline stopped by user.');
+                e.stopped = true;
+                throw e;
+            }
+        };
+        // Turn a Supervisor verdict into actionable guidance for an auto-revision pass.
+        const guidanceFrom = (review) => {
+            const issues = Array.isArray(review.issues) && review.issues.length
+                ? `\nSpecific issues to address:\n- ${review.issues.join('\n- ')}`
+                : '';
+            return `A reviewer rejected your previous attempt. Produce a corrected, complete version that fixes the problems below.\nReviewer feedback: ${review.feedback || 'Improve correctness and completeness.'}${issues}`;
+        };
+
         const log = (msg, type = 'agent') => {
             console.log(`[${new Date().toISOString()}] ${msg}`);
             this.broadcast({ type: 'log', msg, logType: type });
@@ -108,17 +140,32 @@ class Orchestrator {
             setAgent('supervisor', 'active');
             log('🧠 Supervisor: Initializing pipeline...', 'supervisor');
 
-            // === STAGE 1: PLANNER ===
+            // === STAGE 1: PLANNER (auto-revise, then halt if still rejected) ===
+            ensureNotCancelled();
             setAgent('planner', 'active');
             setProgress('planner', 10);
-            const plan = await planner.execute(projectDesc, msg => log(`📋 ${msg}`));
+            let plan = await planner.execute(projectDesc, msg => log(`📋 ${msg}`));
             state.plan = plan;
             setProgress('planner', 100);
 
-            const planReview = await supervisor.validate('Planner', plan, plan, log);
+            let planReview = await supervisor.validate('Planner', plan, plan, log);
+            for (let rev = 1; !planReview.approved && rev <= MAX_REVISIONS; rev++) {
+                ensureNotCancelled();
+                log(`🔧 Supervisor: auto-revising Planner (attempt ${rev}/${MAX_REVISIONS})...`, 'supervisor');
+                setAgent('planner', 'active');
+                setProgress('planner', 10);
+                plan = await planner.execute(projectDesc, msg => log(`📋 ${msg}`), guidanceFrom(planReview));
+                state.plan = plan;
+                setProgress('planner', 100);
+                planReview = await supervisor.validate('Planner', plan, plan, log);
+            }
             state.reviews.planner = planReview;
             setAgent('planner', planReview.approved ? 'done' : 'error');
-            if (!planReview.approved) log('❌ Plan rejected by Supervisor', 'error');
+            if (!planReview.approved) {
+                const e = new Error(`Planner output rejected after ${MAX_REVISIONS} revision attempt(s): ${planReview.feedback || 'quality not met'}`);
+                e.stage = 'planner';
+                throw e; // Halt — do not start the next stage on an incomplete plan
+            }
 
             // === RESOLVE PLAN-DRIVEN PIPELINE ===
             const pipeline = Orchestrator.resolvePipeline(plan);
@@ -144,24 +191,44 @@ class Orchestrator {
 
             const runStage = async (stage) => {
                 try {
-                    setAgent(stage, 'active');
-                    // Steady ramp toward 90% — advances on each agent log line.
+                    const agent = stageMap[stage];
                     let pct = 10;
-                    setProgress(stage, pct);
                     const onStageLog = msg => {
                         log(`${stageIcons[stage]} ${msg}`);
                         pct = Math.min(90, pct + 12);
                         setProgress(stage, pct);
                     };
-                    const agent = stageMap[stage];
-                    const out = stage === 'coder'
-                        ? await agent.execute(plan, state.outputs.designer, onStageLog)
-                        : await agent.execute(plan, onStageLog);
+                    // One execution attempt (optionally with revision guidance).
+                    const exec = (guidance) => {
+                        setAgent(stage, 'active');
+                        pct = 10;
+                        setProgress(stage, pct);
+                        return stage === 'coder'
+                            ? agent.execute(plan, state.outputs.designer, onStageLog, guidance)
+                            : agent.execute(plan, onStageLog, guidance);
+                    };
+
+                    ensureNotCancelled();
+                    let out = await exec();
                     state.outputs[stage] = out;
                     setProgress(stage, 100);
-                    const review = await supervisor.validate(stageNames[stage], out, plan, log);
+                    let review = await supervisor.validate(stageNames[stage], out, plan, log);
+
+                    for (let rev = 1; !review.approved && rev <= MAX_REVISIONS; rev++) {
+                        ensureNotCancelled();
+                        log(`🔧 Supervisor: auto-revising ${stageNames[stage]} (attempt ${rev}/${MAX_REVISIONS})...`, 'supervisor');
+                        out = await exec(guidanceFrom(review));
+                        state.outputs[stage] = out;
+                        setProgress(stage, 100);
+                        review = await supervisor.validate(stageNames[stage], out, plan, log);
+                    }
                     state.reviews[stage] = review;
                     setAgent(stage, review.approved ? 'done' : 'error');
+                    if (!review.approved) {
+                        const e = new Error(`${stageNames[stage]} output rejected after ${MAX_REVISIONS} revision attempt(s): ${review.feedback || 'quality not met'}`);
+                        e.stage = stage;
+                        throw e; // Halt the pipeline — don't proceed past a failed stage
+                    }
                 } catch (err) {
                     // Attribute the failure to THIS stage (important in parallel mode)
                     setAgent(stage, 'error');
@@ -181,20 +248,39 @@ class Orchestrator {
             this.broadcast({ type: 'arrow', index: 2, status: 'done' });
 
             // === STAGE 4: DEVOPS (always last) ===
-            setAgent('devops', 'active');
+            ensureNotCancelled();
             let devopsPct = 10;
-            setProgress('devops', devopsPct);
-            const devopsOutput = await devops.execute(plan, state.outputs.designer, state.outputs.coder, msg => {
+            const devopsLog = msg => {
                 log(`🚀 ${msg}`);
                 devopsPct = Math.min(90, devopsPct + 10);
                 setProgress('devops', devopsPct);
-            });
+            };
+            const runDevops = (guidance) => {
+                setAgent('devops', 'active');
+                devopsPct = 10;
+                setProgress('devops', devopsPct);
+                return devops.execute(plan, state.outputs.designer, state.outputs.coder, devopsLog, guidance);
+            };
+            let devopsOutput = await runDevops();
             state.outputs.devops = devopsOutput;
             setProgress('devops', 100);
 
-            const devopsReview = await supervisor.validate('DevOps', devopsOutput, plan, log);
+            let devopsReview = await supervisor.validate('DevOps', devopsOutput, plan, log);
+            for (let rev = 1; !devopsReview.approved && rev <= MAX_REVISIONS; rev++) {
+                ensureNotCancelled();
+                log(`🔧 Supervisor: auto-revising DevOps (attempt ${rev}/${MAX_REVISIONS})...`, 'supervisor');
+                devopsOutput = await runDevops(guidanceFrom(devopsReview));
+                state.outputs.devops = devopsOutput;
+                setProgress('devops', 100);
+                devopsReview = await supervisor.validate('DevOps', devopsOutput, plan, log);
+            }
             state.reviews.devops = devopsReview;
             setAgent('devops', devopsReview.approved ? 'done' : 'error');
+            if (!devopsReview.approved) {
+                const e = new Error(`DevOps output rejected after ${MAX_REVISIONS} revision attempt(s): ${devopsReview.feedback || 'quality not met'}`);
+                e.stage = 'devops';
+                throw e;
+            }
 
             // === FINAL ===
             log('💾 Saving all generated files...', 'supervisor');
@@ -217,13 +303,24 @@ class Orchestrator {
             log(`✨ Pipeline complete! Project saved to: ${projectDir}`, 'success');
             return state;
         } catch (error) {
+            const wasStopped = error?.stopped || this.cancelled;
+            if (wasStopped) {
+                state.status = 'stopped';
+                state.error = 'Pipeline stopped by user.';
+                log('🛑 Pipeline stopped by user.', 'info');
+                if (state.currentAgent) setAgent(state.currentAgent, 'idle');
+                this.broadcast({ type: 'stopped', error: state.error });
+                return state; // A user stop is intentional, not an error to rethrow
+            }
             state.status = 'failed';
             const friendly = this.formatError(error, router);
             state.error = friendly;
             log(`❌ Pipeline failed: ${friendly}`, 'error');
-            setAgent(state.currentAgent, 'error');
+            if (state.currentAgent) setAgent(state.currentAgent, 'error');
             this.broadcast({ type: 'error', error: friendly, provider: error.provider, status: error.status });
             throw error;
+        } finally {
+            this.abortController = null;
         }
     }
 

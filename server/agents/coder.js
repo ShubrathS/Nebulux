@@ -6,12 +6,14 @@ class CoderAgent {
         this.fallbackWarned = false;
     }
 
-    async execute(plan, designOutput, onLog) {
+    async execute(plan, designOutput, onLog, guidance) {
         const results = { files: [] };
         const label = this.router.label(this.model);
         this.onLog = onLog;
+        // Prepended to every prompt during a Supervisor-requested revision pass.
+        this.guidance = guidance ? `REVISION REQUEST — fix this and output complete, corrected code:\n${guidance}\n\n` : '';
 
-        onLog(`🔧 ${label}: Generating backend code...`);
+        onLog(`🔧 ${label}: ${guidance ? 'Revising backend code per Supervisor feedback...' : 'Generating backend code...'}`);
 
         onLog(`${label}: Creating server entry point...`);
         const serverCode = await this.gen(`Generate a complete Node.js Express server file (server.js). Include:
@@ -69,6 +71,7 @@ Output ONLY the raw JavaScript code, no explanations.`);
     }
 
     async gen(prompt) {
+        prompt = (this.guidance || '') + prompt;
         try {
             const text = await this.router.chat(this.model, { prompt, maxTokens: 4000 });
             return this.router.stripFences(text);
@@ -92,7 +95,7 @@ Output ONLY the raw JavaScript code, no explanations.`);
         try {
             const text = await this.router.chat(this.model, {
                 system: 'You are an expert backend developer. Review and improve the given code. Fix bugs, add error handling, improve structure. Output ONLY the improved raw code, no explanations or markdown fences.',
-                prompt: `Review and improve this ${filePath} file for project "${plan.projectName || 'Project'}":\n\n${code}`,
+                prompt: `${this.guidance || ''}Review and improve this ${filePath} file for project "${plan.projectName || 'Project'}":\n\n${code}`,
                 maxTokens: 6000
             });
             return this.router.stripFences(text);

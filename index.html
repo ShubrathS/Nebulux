@@ -87,6 +87,10 @@
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
                         <span>Run Pipeline</span>
                     </button>
+                    <button class="btn btn-stop js-stop" id="btn-stop" hidden title="Stop the running pipeline">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+                        <span>Stop</span>
+                    </button>
                 </div>
             </header>
 
@@ -120,6 +124,10 @@
                         placeholder="Define the scope, goals, and core features of your project here..."
                         maxlength="8000"></textarea>
                     <div class="project-input-actions">
+                        <button class="btn btn-stop js-stop btn-stop-lg" id="btn-stop-2" hidden
+                            title="Stop the running pipeline">
+                            <span>■ Stop</span>
+                        </button>
                         <button class="btn btn-run btn-build" id="btn-build"
                             title="Build your project with the multi-agent pipeline"
                             data-idle-label="⚡ Build Project" data-running-label="Building...">

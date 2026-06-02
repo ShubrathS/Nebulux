@@ -12,6 +12,9 @@ class ModelRouter {
         this.kimiKey = config.kimiKey;
         this.ollamaUrl = (config.ollamaUrl || 'http://localhost:11434').replace(/\/+$/, '');
         this.ollamaModel = config.ollamaModel || 'gemma3:latest';
+        // Optional AbortSignal — set by the orchestrator so the Stop button can
+        // abort in-flight provider requests. Undefined = no cancellation.
+        this.signal = config.signal;
         // Custom OpenAI-compatible models, keyed by id: { id, name, baseUrl, model, apiKey }
         this.customModels = new Map();
         if (Array.isArray(config.customModels)) {
@@ -91,7 +94,7 @@ class ModelRouter {
             model: cfg.model,
             messages,
             max_tokens: maxTokens
-        }, { headers, timeout: 180000 });
+        }, { headers, timeout: 180000, signal: this.signal });
         const content = r?.data?.choices?.[0]?.message?.content;
         if (!content) throw new Error(`${cfg.name} returned no content`);
         return this.stripFences(content);
@@ -106,6 +109,12 @@ class ModelRouter {
                 return await fn();
             } catch (err) {
                 lastErr = err;
+                // Never retry once the pipeline has been stopped — surface immediately.
+                if (this.signal?.aborted || err?.name === 'AbortError' || err?.code === 'ABORT_ERR' || err?.name === 'APIUserAbortError') {
+                    const e = new Error('Request aborted (pipeline stopped).');
+                    e.aborted = true;
+                    throw e;
+                }
                 const info = ModelRouter.classifyError(err);
                 const isTransient = info.status === 429 || info.status === 503 || info.status === 502 || info.status === 504 || info.code === 'ECONNRESET' || info.code === 'ETIMEDOUT';
                 if (!isTransient || attempt === maxAttempts) {
@@ -174,7 +183,7 @@ class ModelRouter {
             max_tokens: maxTokens,
             ...(system ? { system } : {}),
             messages: [{ role: 'user', content: prompt }]
-        });
+        }, this.signal ? { signal: this.signal } : undefined);
         const text = r?.content?.[0]?.text;
         if (!text) throw new Error('Claude returned no content');
         return text;
@@ -184,7 +193,8 @@ class ModelRouter {
         if (!this.gemini) throw new Error('Gemini not configured (GEMINI_API_KEY missing)');
         const r = await this.gemini.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: system ? `${system}\n\n${prompt}` : prompt
+            contents: system ? `${system}\n\n${prompt}` : prompt,
+            ...(this.signal ? { config: { abortSignal: this.signal } } : {})
         });
         const text = r?.text;
         if (text == null || text === '') throw new Error('Gemini returned no content');
@@ -201,7 +211,7 @@ class ModelRouter {
             model: 'moonshotai/kimi-k2.6',
             messages,
             max_tokens: maxTokens
-        }, { headers, timeout: 180000 });
+        }, { headers, timeout: 180000, signal: this.signal });
         const content = r?.data?.choices?.[0]?.message?.content;
         if (!content) throw new Error('Kimi returned no content');
         return content;
@@ -215,7 +225,7 @@ class ModelRouter {
                 prompt: fullPrompt,
                 stream: false,
                 options: { temperature: 0.3, num_predict: Math.min(maxTokens, 4000) }
-            }, { timeout: 180000 });
+            }, { timeout: 180000, signal: this.signal });
             const text = r?.data?.response;
             if (text == null || text === '') throw new Error(`Ollama (${this.ollamaModel}) returned no content`);
             return this.stripFences(text);
