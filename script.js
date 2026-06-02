@@ -117,7 +117,8 @@ function handleServerMessage(data) {
             setRunningState(false);
             bumpRunCount();
             refreshStats();
-            log('✨ Pipeline complete! Check the /output folder for generated files.', 'success');
+            if (data.state && data.state.downloadName) showDownload(data.state.downloadName);
+            log('✨ Pipeline complete! Check the /output folder or click “Download Project”.', 'success');
             break;
         case 'stopped':
             isRunning = false;
@@ -365,6 +366,8 @@ function renderDetail(agentId) {
 
 function resetAll() {
     resetPipelineOrder();
+    const dl = document.getElementById('btn-download');
+    if (dl) { dl.hidden = true; delete dl.dataset.project; }
     ['supervisor',...PIPELINE].forEach(id => setAgentState(id, 'idle'));
     PIPELINE.forEach(id => setProgress(id, 0));
     [0,1,2].forEach(i => setArrowState(i, ''));
@@ -388,6 +391,28 @@ function setRunningState(on) {
         b.hidden = !on;
         if (on) b.removeAttribute('disabled');
     });
+}
+
+// Reveal the Download button for a completed project.
+function showDownload(name) {
+    const btn = document.getElementById('btn-download');
+    if (!btn || !name) return;
+    btn.dataset.project = name;
+    btn.hidden = false;
+}
+
+// Trigger a browser download of the project's .zip from the server.
+function downloadProject() {
+    const btn = document.getElementById('btn-download');
+    const name = btn && btn.dataset.project;
+    if (!name) return;
+    const a = document.createElement('a');
+    a.href = `${API_BASE}/api/download/${encodeURIComponent(name)}`;
+    a.download = `${name}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    log(`⬇ Downloading ${name}.zip ...`, 'info');
 }
 
 // Ask the server to stop the running pipeline.
@@ -989,6 +1014,8 @@ document.getElementById('btn-run').addEventListener('click', runPipeline);
 const _btnBuild = document.getElementById('btn-build');
 if (_btnBuild) _btnBuild.addEventListener('click', runPipeline);
 document.querySelectorAll('.js-stop').forEach(b => b.addEventListener('click', stopPipeline));
+const _btnDownload = document.getElementById('btn-download');
+if (_btnDownload) _btnDownload.addEventListener('click', downloadProject);
 document.getElementById('btn-reset').addEventListener('click', resetAll);
 document.getElementById('btn-clear-log').addEventListener('click', () => { logBody.innerHTML = ''; });
 document.getElementById('api-modal-close').addEventListener('click', closeApiModal);

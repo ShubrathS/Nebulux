@@ -302,6 +302,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:#050510;color:#c8d6e5;m
 .btn-stop:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(239,68,68,0.5)}
 .btn-stop[disabled]{opacity:0.55;cursor:not-allowed;transform:none !important;box-shadow:none !important}
 .btn-stop-lg{padding:11px 24px;font-size:0.92rem;border-radius:10px}
+.btn-download{padding:11px 24px;font-size:0.92rem;border-radius:10px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;box-shadow:0 2px 12px rgba(16,185,129,0.3)}
+.btn-download:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(16,185,129,0.5)}
 
 /* Pipeline section */
 .pipeline-section{position:relative;padding-top:6px}

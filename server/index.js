@@ -4,6 +4,8 @@ const cors = require('cors');
 const http = require('http');
 const { WebSocketServer } = require('ws');
 const path = require('path');
+const fs = require('fs');
+const archiver = require('archiver');
 const axios = require('axios');
 const Anthropic = require('@anthropic-ai/sdk');
 const { GoogleGenAI } = require('@google/genai');
@@ -102,6 +104,7 @@ function broadcast(data) {
 const KIMI_URL = process.env.KIMI_URL || 'http://localhost:8000';
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'gemma3:latest';
+const OUTPUT_DIR = path.join(__dirname, '..', 'output');
 const orchestrator = new Orchestrator({
     anthropicKey: process.env.ANTHROPIC_API_KEY,
     geminiKey: process.env.GEMINI_API_KEY,
@@ -109,7 +112,7 @@ const orchestrator = new Orchestrator({
     kimiUrl: KIMI_URL,
     ollamaUrl: OLLAMA_URL,
     ollamaModel: OLLAMA_MODEL,
-    outputDir: path.join(__dirname, '..', 'output'),
+    outputDir: OUTPUT_DIR,
     broadcast
 });
 
@@ -188,6 +191,36 @@ app.post('/api/stop', (req, res) => {
     if (!currentRun) return res.status(409).json({ error: 'No pipeline is running' });
     orchestrator.cancel();
     res.json({ status: 'stopping' });
+});
+
+// Download a generated project folder as a .zip. The :project param is sanitized
+// the same way the orchestrator names folders, then resolved strictly inside
+// OUTPUT_DIR to prevent path traversal.
+app.get('/api/download/:project', (req, res) => {
+    const safe = String(req.params.project || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
+    if (!safe || /^[._-]+$/.test(safe)) return res.status(400).json({ error: 'Invalid project name' });
+
+    const base = path.resolve(OUTPUT_DIR);
+    const dir = path.resolve(base, safe);
+    if (dir !== base && !dir.startsWith(base + path.sep)) {
+        return res.status(400).json({ error: 'Invalid project path' });
+    }
+    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+        return res.status(404).json({ error: 'Project not found. Build it first.' });
+    }
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${safe}.zip"`);
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    archive.on('error', err => {
+        console.error('Archive error:', err);
+        if (!res.headersSent) res.status(500).json({ error: 'Failed to create archive' });
+        else res.destroy(err);
+    });
+    archive.pipe(res);
+    archive.directory(dir, safe); // nest everything under a top-level folder
+    archive.finalize();
 });
 
 // Health check (key presence only)

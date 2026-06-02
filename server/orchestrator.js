@@ -298,6 +298,7 @@ class Orchestrator {
 
             state.status = 'complete';
             state.projectDir = projectDir;
+            state.downloadName = safeName; // used by the frontend Download button
             state.finalReport = finalReport;
             this.broadcast({ type: 'complete', state });
             log(`✨ Pipeline complete! Project saved to: ${projectDir}`, 'success');
