@@ -17,14 +17,29 @@ const wss = new WebSocketServer({ server });
 // CORS_ORIGIN: comma-separated allowlist. "*" = allow all (dev only). Empty = same-origin only.
 const CORS_ORIGIN = (process.env.CORS_ORIGIN || '').trim();
 const corsAllowlist = CORS_ORIGIN === '*' ? '*' : CORS_ORIGIN.split(',').map(s => s.trim()).filter(Boolean);
-app.use(cors({
-    origin: (origin, cb) => {
-        if (corsAllowlist === '*') return cb(null, true);
-        if (!origin) return cb(null, true); // same-origin / server-to-server
-        if (corsAllowlist.includes(origin)) return cb(null, true);
-        return cb(new Error(`CORS: origin ${origin} not allowed`));
-    },
-    allowedHeaders: ['Content-Type', 'X-Anthropic-Key', 'X-Gemini-Key', 'X-Kimi-Key', 'X-Kimi-Url', 'X-Ollama-Url', 'X-Ollama-Model']
+const CORS_ALLOWED_HEADERS = ['Content-Type', 'X-Anthropic-Key', 'X-Gemini-Key', 'X-Kimi-Key', 'X-Kimi-Url', 'X-Ollama-Url', 'X-Ollama-Model'];
+
+// The dashboard is served by THIS server, but its API calls carry custom headers
+// (X-*-Key), so the browser tags them as CORS requests and sends an Origin header
+// even same-origin. Always allow an Origin whose host matches our own Host — that's
+// the dashboard talking to itself — regardless of port or allowlist.
+function isAllowedOrigin(origin, req) {
+    if (!origin) return true;                  // non-CORS (curl, same-origin simple GET)
+    if (corsAllowlist === '*') return true;
+    try {
+        if (req.headers.host && new URL(origin).host === req.headers.host) return true;
+    } catch { /* malformed Origin → fall through to allowlist */ }
+    return corsAllowlist.includes(origin);
+}
+
+// Delegate form gives us access to `req` (needed for the same-origin host check).
+// On a disallowed origin we simply omit CORS headers (browser blocks it) instead of
+// throwing — a rejected cross-origin call must never surface as a 500.
+app.use(cors((req, cb) => {
+    cb(null, {
+        origin: isAllowedOrigin(req.headers.origin, req),
+        allowedHeaders: CORS_ALLOWED_HEADERS
+    });
 }));
 
 // --- Security headers ---
